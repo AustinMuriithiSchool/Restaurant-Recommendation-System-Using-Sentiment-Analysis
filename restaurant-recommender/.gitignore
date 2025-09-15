@@ -1,6 +1,6 @@
 # Python
-__pycache__\
-.venv\
+__pycache__/
+.venv/
 *.pyc
 
 # Environment and secrets
@@ -9,4 +9,4 @@ __pycache__\
 firebase_service_account.json
 
 # VSCode
-.vscode\
+.vscode/
