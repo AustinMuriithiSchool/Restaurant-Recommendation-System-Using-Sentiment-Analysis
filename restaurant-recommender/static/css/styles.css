@@ -1,8 +1,0 @@
-body { font-family: Arial, sans-serif; background: #f8f8f8; margin: 0; }
-main { max-width: 400px; margin: 40px auto; background: #fff; padding: 2em; border-radius: 8px; box-shadow: 0 2px 8px #0001; }
-nav { background: #333; color: #fff; padding: 1em; text-align: right; }
-nav a { color: #fff; margin-left: 1em; text-decoration: underline; }
-h2 { margin-top: 0; }
-form label { display: block; margin-bottom: 1em; }
-input[type="email"], input[type="password"] { width: 100%; padding: 0.5em; margin-top: 0.2em; }
-button { padding: 0.5em 1em; margin-right: 0.5em; }
