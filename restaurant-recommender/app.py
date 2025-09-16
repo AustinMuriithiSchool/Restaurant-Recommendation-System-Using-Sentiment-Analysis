@@ -104,8 +104,8 @@ def session_login():
         return resp
     except Exception as e:
         print("Session cookie creation error:", e)
-    import traceback; traceback.print_exc()
-    return jsonify({'error': 'Failed to create session cookie', 'details': str(e)}), 401
+        import traceback; traceback.print_exc()
+        return jsonify({'error': 'Failed to create session cookie', 'details': str(e)}), 401
     
     
     
