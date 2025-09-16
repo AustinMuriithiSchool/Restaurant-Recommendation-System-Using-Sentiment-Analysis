@@ -4,6 +4,8 @@
 <h2>Login</h2>
 <form id="login-form">
     <label>Email:<br><input type="email" id="login-email" required></label><br>
+    <label>Password:<br><input type="password" id="login-password"></label><br>
+    <button type="button" onclick="authLoginWithPassword()">Login with Email & Password</button>
     <button type="button" onclick="authLoginWithEmailLink()">Login via Email Link (OTP)</button>
 </form>
 <p><a href="/register">Register</a></p>
