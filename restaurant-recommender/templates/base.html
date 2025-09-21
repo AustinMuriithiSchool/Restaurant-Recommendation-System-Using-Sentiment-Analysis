@@ -7,14 +7,23 @@
     <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body>
-    <nav>
-        {% if user %}
-            <span>Logged in as {{ user.email }}</span> |
-            <a href="/logout">Logout</a>
-        {% endif %}
-    </nav>
-    <main>
+    <header class="header">
+        <div class="container">
+            <h1 class="logo">NourishNet</h1>
+            <nav>
+                {% if user %}
+                    <span>Logged in as {{ user.username if user.username else user.email }}</span>
+                {% endif %}
+            </nav>
+        </div>
+    </header>
+    <main class="container fade-in">
         {% block content %}{% endblock %}
     </main>
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 NourishNet. All rights reserved.</p>
+        </div>
+    </footer>
 </body>
 </html>
