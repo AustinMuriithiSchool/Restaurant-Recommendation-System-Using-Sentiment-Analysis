@@ -1,12 +1,29 @@
+
 {% extends 'base.html' %}
 {% block title %}Register{% endblock %}
 {% block content %}
-<h2>Register</h2>
-<form id="register-form">
-    <label>Email:<br><input type="email" id="register-email" required></label><br>
-    <label>Password:<br><input type="password" id="register-password" required></label><br>
-    <button type="button" onclick="authRegisterWithPassword()">Create Account</button>
-</form>
-<p><a href="/login">Back to Login</a></p>
+<div class="center-box">
+    <div class="form-box">
+                <h2 style="text-align:center;">Register</h2>
+                {% if error %}
+                    <div class="error-message" style="color: red; margin-bottom: 1em;">{{ error }}</div>
+                {% endif %}
+        <form id="register-form">
+            <label>Username:<br><input type="text" id="register-username" required></label><br>
+            <label>Email:<br><input type="email" id="register-email" required></label><br>
+            <label>Password:<br><input type="password" id="register-password" required></label><br>
+            <label>Role:<br>
+                <select id="register-role" required>
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </label><br>
+            <button type="button" onclick="authRegisterWithPassword()">Create Account</button>
+        </form>
+        <form action="/login" method="get" class="login-form-link">
+            <button type="submit">Back to Login</button>
+        </form>
+    </div>
+</div>
 <script type="module" src="/static/js/auth.js"></script>
 {% endblock %}

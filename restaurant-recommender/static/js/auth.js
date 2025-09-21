@@ -1,8 +1,16 @@
 import { sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 window.authSendPasswordReset = async function() {
-  const email = document.getElementById('login-email').value;
+  let email = null;
+  // Try to get email from user context if available
+  if (window.userEmail) {
+    email = window.userEmail;
+  } else {
+    // Try to get from login form as fallback
+    const emailInput = document.getElementById('login-email');
+    if (emailInput) email = emailInput.value;
+  }
   if (!email) {
-    alert('Please enter your email address to reset your password.');
+    alert('No email found for password reset.');
     return;
   }
   try {
@@ -12,6 +20,10 @@ window.authSendPasswordReset = async function() {
     alert(err.message);
   }
 };
+// Set userEmail from template if available
+if (window.userEmail === undefined && typeof USER_EMAIL_FROM_TEMPLATE !== 'undefined') {
+  window.userEmail = USER_EMAIL_FROM_TEMPLATE;
+}
 // Firebase Web SDK v9+ modular import
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import {
@@ -30,13 +42,34 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
 window.authRegisterWithPassword = async function() {
+  const username = document.getElementById('register-username').value;
   const email = document.getElementById('register-email').value;
   const password = document.getElementById('register-password').value;
+  const role = document.getElementById('register-role').value;
   try {
     const userCred = await createUserWithEmailAndPassword(auth, email, password);
     const idToken = await userCred.user.getIdToken();
+    const firebase_uid = userCred.user.uid;
+    console.log('[DEBUG] Register: Firebase user created, UID:', firebase_uid);
+    // Always set session cookie first
     await sessionLogin(idToken);
+    // Then send registration info to backend, including firebase_uid
+    const res = await fetch('/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        username,
+        email,
+        role,
+        firebase_uid
+      })
+    });
+    console.log('[DEBUG] Register: /register response', res);
+    if (res.redirected) {
+      window.location = res.url;
+    }
   } catch (err) {
+    console.error('[DEBUG] Register error:', err);
     alert(err.message);
   }
 };
@@ -47,8 +80,25 @@ window.authLoginWithPassword = async function() {
   try {
     const userCred = await signInWithEmailAndPassword(auth, email, password);
     const idToken = await userCred.user.getIdToken();
+    const firebase_uid = userCred.user.uid;
+    console.log('[DEBUG] Login: Firebase user signed in, UID:', firebase_uid);
+    // Always set session cookie first
     await sessionLogin(idToken);
+    // Then send UID to backend to get role and redirect
+    const res = await fetch('/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        email,
+        firebase_uid
+      })
+    });
+    console.log('[DEBUG] Login: /login response', res);
+    if (res.redirected) {
+      window.location = res.url;
+    }
   } catch (err) {
+    console.error('[DEBUG] Login error:', err);
     alert(err.message);
   }
 };
@@ -69,15 +119,24 @@ window.authLoginWithEmailLink = async function() {
 };
 
 async function sessionLogin(idToken) {
-  const res = await fetch('/sessionLogin', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ idToken })
-  });
-  if (res.status === 204) {
-    window.location = '/dashboard';
-  } else {
-    alert('Session login failed');
+  try {
+    console.log('[DEBUG] sessionLogin called with idToken:', !!idToken);
+    const res = await fetch('/sessionLogin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken })
+    });
+    console.log('[DEBUG] sessionLogin /sessionLogin response', res);
+    if (res.status === 204) {
+      window.location = '/dashboard';
+    } else {
+      const data = await res.json();
+      console.error('[DEBUG] sessionLogin failed:', data);
+      alert('Session login failed: ' + (data.error || res.status));
+    }
+  } catch (err) {
+    console.error('[DEBUG] sessionLogin error:', err);
+    alert('Session login error: ' + err.message);
   }
 }
 

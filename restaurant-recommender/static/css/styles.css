@@ -1,8 +1,229 @@
-body { font-family: Arial, sans-serif; background: #f8f8f8; margin: 0; }
-main { max-width: 400px; margin: 40px auto; background: #fff; padding: 2em; border-radius: 8px; box-shadow: 0 2px 8px #0001; }
-nav { background: #333; color: #fff; padding: 1em; text-align: right; }
-nav a { color: #fff; margin-left: 1em; text-decoration: underline; }
-h2 { margin-top: 0; }
-form label { display: block; margin-bottom: 1em; }
-input[type="email"], input[type="password"] { width: 100%; padding: 0.5em; margin-top: 0.2em; }
-button { padding: 0.5em 1em; margin-right: 0.5em; }
+/* Custom style for user role dropdown */
+.form-box select#register-role {
+	width: 100%;
+	padding: 0.6rem 0.8rem;
+	margin-bottom: 1rem;
+	border: 1px solid #90caf9;
+	border-radius: 6px;
+	font-size: 1rem;
+	background: #e3f2fd;
+	color: #0d47a1;
+	transition: border 0.2s, box-shadow 0.2s;
+	appearance: none;
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	background-image: url('data:image/svg+xml;utf8,<svg fill="%230d47a1" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>');
+	background-repeat: no-repeat;
+	background-position: right 0.7em center;
+	background-size: 1.2em;
+}
+.form-box select#register-role:focus {
+	border: 1.5px solid #1976d2;
+	outline: none;
+	box-shadow: 0 0 0 2px #90caf9aa;
+}
+/* Add spacing between stacked buttons in forms */
+.form-box .form-button-space {
+	margin-bottom: 0.7rem;
+}
+/* Back to Login button on register page */
+.form-box .login-form-link {
+	text-align: center;
+	margin-top: 0.5rem;
+}
+.form-box .login-form-link button {
+	width: 100%;
+	padding: 0.6rem;
+	font-size: 1rem;
+	border-radius: 4px;
+	border: none;
+	background: #007bff;
+	color: #fff;
+	cursor: pointer;
+}
+/* Register button on login page */
+.form-box .register-form-link {
+	text-align: center;
+	margin-top: 0.5rem;
+}
+.form-box .register-form-link button {
+	width: 100%;
+	padding: 0.6rem;
+	font-size: 1rem;
+	border-radius: 4px;
+	border: none;
+	background: #6c757d;
+	color: #fff;
+	cursor: pointer;
+}
+/* Center headings and links in form boxes */
+.form-box h2 {
+	text-align: center;
+}
+.form-box p {
+	text-align: center;
+}
+/* Center the login/register box */
+.center-box {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	min-height: 100vh;
+}
+
+/* Style for the form box */
+.form-box {
+	background: #fff;
+	padding: 2rem 2.5rem 2.5rem 2.5rem;
+	border-radius: 8px;
+	box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+	width: 350px;
+	max-width: 95vw;
+	margin: 2.5em auto 2.5em auto;
+}
+
+/* Make input fields fit the box */
+.form-box input[type="email"],
+.form-box input[type="password"],
+.form-box input[type="text"] {
+	width: 100%;
+	padding: 0.6rem 0.8rem;
+	margin-bottom: 1rem;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	font-size: 1rem;
+	box-sizing: border-box;
+}
+
+/* Center the submit button */
+.form-box button[type="submit"] {
+	width: 100%;
+	padding: 0.6rem;
+	font-size: 1rem;
+	border-radius: 4px;
+	border: none;
+	background: #007bff;
+	color: #fff;
+	cursor: pointer;
+	margin-top: 0.5rem;
+}
+
+body {
+	font-family: 'Segoe UI', Arial, sans-serif;
+	background: linear-gradient(135deg, #2196f3 0%, #0d47a1 100%);
+	margin: 0;
+	min-height: 100vh;
+	display: flex;
+	flex-direction: column;
+	min-height: 100vh;
+}
+
+.container {
+	max-width: 420px;
+	margin: 0 auto;
+	padding: 0 1em;
+}
+
+.header {
+	background: #1565c0;
+	color: #fff;
+	padding: 1.5em 0 1em 0;
+	box-shadow: 0 2px 8px #0002;
+}
+.logo {
+	margin: 0;
+	font-size: 2em;
+	letter-spacing: 2px;
+	font-weight: 700;
+}
+.header nav {
+	margin-top: 0.5em;
+	font-size: 1em;
+}
+.header nav a {
+	color: #bbdefb;
+	margin-left: 1em;
+	text-decoration: underline;
+	transition: color 0.2s;
+}
+.header nav a:hover {
+	color: #fff;
+}
+
+main {
+	background: #fff;
+	margin: 2.5em auto 2em auto;
+	padding: 2em 2em 4em 2em;
+	border-radius: 12px;
+	box-shadow: 0 4px 24px #0d47a133;
+	min-height: 300px;
+	animation: fadeIn 1s;
+	flex: 1 0 auto;
+}
+
+.footer {
+	background: #0d47a1;
+	color: #bbdefb;
+	text-align: center;
+	padding: 1em 0;
+	font-size: 0.95em;
+	width: 100%;
+	flex-shrink: 0;
+	margin-top: auto;
+	position: relative;
+	left: 0;
+	bottom: 0;
+}
+
+h2 {
+	margin-top: 0;
+	color: #1565c0;
+	font-weight: 600;
+	letter-spacing: 1px;
+}
+
+form label {
+	display: block;
+	margin-bottom: 1.2em;
+	color: #0d47a1;
+	font-weight: 500;
+}
+input[type="email"], input[type="password"] {
+	width: 100%;
+	padding: 0.7em;
+	margin-top: 0.2em;
+	border: 1px solid #90caf9;
+	border-radius: 6px;
+	font-size: 1em;
+	background: #e3f2fd;
+	transition: border 0.2s, box-shadow 0.2s;
+}
+input[type="email"]:focus, input[type="password"]:focus {
+	border: 1.5px solid #1976d2;
+	outline: none;
+	box-shadow: 0 0 0 2px #90caf9aa;
+}
+button {
+	padding: 0.7em 1.5em;
+	margin-right: 0.7em;
+	background: #1976d2;
+	color: #fff;
+	border: none;
+	border-radius: 6px;
+	font-size: 1em;
+	font-weight: 600;
+	cursor: pointer;
+	box-shadow: 0 2px 8px #1976d222;
+	transition: background 0.2s, transform 0.1s;
+}
+button:hover, button:focus {
+	background: #0d47a1;
+	transform: translateY(-2px) scale(1.04);
+}
+.fade-in {
+	animation: fadeIn 1s;
+}
+@keyframes fadeIn {
+	from { opacity: 0; transform: translateY(20px); }
+	to { opacity: 1; transform: translateY(0); }
+}
