@@ -1,3 +1,20 @@
+/* Google Sign-In button style */
+.google-signin-btn {
+	background: #4285F4;
+	color: #fff;
+	padding: 0.5em 1em;
+	border: none;
+	border-radius: 4px;
+	font-size: 1em;
+	font-weight: 600;
+	cursor: pointer;
+	box-shadow: 0 2px 8px #4285F422;
+	transition: background 0.2s, transform 0.1s;
+}
+.google-signin-btn:hover, .google-signin-btn:focus {
+	background: #3367D6;
+	transform: translateY(-2px) scale(1.04);
+}
 /* Custom style for user role dropdown */
 .form-box select#register-role {
 	width: 100%;

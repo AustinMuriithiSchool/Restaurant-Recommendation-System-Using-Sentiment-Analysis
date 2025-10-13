@@ -1,3 +1,63 @@
+import { GoogleAuthProvider, signInWithPopup } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+
+window.authLoginWithGoogle = async function() {
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+  try {
+    const result = await signInWithPopup(auth, provider);
+    const user = result.user;
+    const idToken = await user.getIdToken();
+    const firebase_uid = user.uid;
+    const email = user.email;
+    // Always set session cookie first
+      await sessionLogin(idToken);
+      // Check if user exists in backend
+      let data;
+      try {
+        const res = await fetch('/check_user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ firebase_uid })
+        });
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error('Backend error: ' + errText);
+        }
+        data = await res.json();
+      } catch (err) {
+        alert('Error checking user in backend: ' + err.message);
+        return;
+      }
+      if (data.exists) {
+        // User exists, redirect to dashboard
+        window.location = '/';
+      } else {
+        // Prompt for role selection
+        let role = prompt('Select your role: "admin" or "user"').toLowerCase();
+        if (role !== 'admin' && role !== 'user') {
+          alert('Invalid role. Please try again.');
+          return;
+        }
+        // Register user in backend
+        const regRes = await fetch('/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            username: email.split('@')[0],
+            email,
+            role,
+            firebase_uid
+          })
+        });
+        if (regRes.redirected) {
+          window.location = regRes.url;
+        }
+      }
+  } catch (err) {
+    console.error('[DEBUG] Google Sign-In error:', err);
+    alert(err.message);
+  }
+};
 import { sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 window.authSendPasswordReset = async function() {
   let email = null;

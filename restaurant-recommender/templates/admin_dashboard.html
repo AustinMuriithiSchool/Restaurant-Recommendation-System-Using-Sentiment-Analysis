@@ -5,6 +5,26 @@
 <p>This is the admin dashboard.</p>
 <button onclick="authSendPasswordReset()">Reset Password via Email</button>
 <button onclick="authLogout()">Logout</button>
+
+{% if pending_admins and pending_admins|length > 0 %}
+	<h3>Pending Admin Approvals</h3>
+	<table style="margin-top:1em;">
+		<tr><th>Username</th><th>Email</th><th>Action</th></tr>
+		{% for admin in pending_admins %}
+			<tr>
+				<td>{{ admin[1] }}</td>
+				<td>{{ admin[2] }}</td>
+				<td>
+					<form method="post" action="{{ url_for('approve_admin', user_id=admin[0]) }}">
+						<button type="submit">Approve</button>
+					</form>
+				</td>
+			</tr>
+		{% endfor %}
+	</table>
+{% else %}
+	<p>No pending admin approvals.</p>
+{% endif %}
 <script>
 var USER_EMAIL_FROM_TEMPLATE = {{ user.email|tojson }};
 </script>
