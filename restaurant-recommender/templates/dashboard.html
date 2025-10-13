@@ -3,4 +3,6 @@
 {% block content %}
 <h2>Welcome, {{ user.username if user and user.username else (user.email if user else 'Guest') }}!</h2>
 <p>This is your dashboard.</p>
+<button onclick="authLogout()">Logout</button>
+<script type="module" src="/static/js/auth.js"></script>
 {% endblock %}

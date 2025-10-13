@@ -1,14 +1,3 @@
-def get_user_info(firebase_uid):
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute('SELECT username, role FROM users WHERE firebase_uid = %s', (firebase_uid,))
-    result = cur.fetchone()
-    cur.close()
-    conn.close()
-    if result:
-        return {'username': result[0], 'role': result[1]}
-    return None
-
 import os
 from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, make_response, jsonify, g
@@ -26,6 +15,37 @@ app.config['SESSION_COOKIE_NAME'] = os.environ.get('SESSION_COOKIE_NAME', '__ses
 app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE', 'False') == 'True'
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
+# Check if user exists endpoint for Google Sign-In
+@app.route('/check_user', methods=['POST'])
+def check_user():
+    try:
+        data = request.get_json(force=True)
+        firebase_uid = data.get('firebase_uid')
+        if not firebase_uid:
+            return jsonify({'exists': False, 'error': 'No firebase_uid provided'}), 400
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('SELECT id FROM users WHERE firebase_uid = %s', (firebase_uid,))
+        result = cur.fetchone()
+        cur.close()
+        conn.close()
+        return jsonify({'exists': bool(result)})
+    except Exception as e:
+        print('[DEBUG] /check_user error:', e)
+        import traceback; traceback.print_exc()
+        return jsonify({'exists': False, 'error': str(e)}), 500
+
+def get_user_info(firebase_uid):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('SELECT username, role, status FROM users WHERE firebase_uid = %s', (firebase_uid,))
+    result = cur.fetchone()
+    cur.close()
+    conn.close()
+    if result:
+        return {'username': result[0], 'role': result[1], 'status': result[2]}
+    return None
 
 # MySQL config (update with your credentials)
 MYSQL_HOST = os.environ.get('MYSQL_HOST', 'localhost')
@@ -76,10 +96,12 @@ def register():
             print("[DEBUG] Attempting to insert user into MySQL...")
             conn = get_db_connection()
             cur = conn.cursor()
-            cur.execute('INSERT INTO users (firebase_uid, username, email, role) VALUES (%s, %s, %s, %s)',
-                        (firebase_uid, username, email, role))
+            # If registering as admin, set status to 'pending', else 'active'
+            status = 'pending' if role == 'admin' else 'active'
+            cur.execute('INSERT INTO users (firebase_uid, username, email, role, status) VALUES (%s, %s, %s, %s, %s)',
+                        (firebase_uid, username, email, role, status))
             conn.commit()
-            print(f"[DEBUG] Inserted user into MySQL: {firebase_uid}, {email}, {username}, {role}")
+            print(f"[DEBUG] Inserted user into MySQL: {firebase_uid}, {email}, {username}, {role}, {status}")
             cur.close()
             conn.close()
         except Exception as e:
@@ -130,6 +152,7 @@ def login_required(f):
                 'uid': firebase_uid,
                 'username': user_info['username'],
                 'role': user_info['role'],
+                'status': user_info.get('status'),
                 'email': session_user.get('email')
             }
         else:
@@ -150,6 +173,7 @@ def load_user():
             'uid': firebase_uid,
             'username': user_info['username'],
             'role': user_info['role'],
+            'status': user_info.get('status'),
             'email': session_user.get('email')
         }
     else:
@@ -184,7 +208,28 @@ def login():
 @app.route('/admin_dashboard')
 @login_required
 def admin_dashboard():
-    return render_template('admin_dashboard.html', user=g.user)
+    # Show pending admins for approval
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT id, username, email FROM users WHERE role='admin' AND status='pending'")
+    pending_admins = cur.fetchall()
+    cur.close()
+    conn.close()
+    return render_template('admin_dashboard.html', user=g.user, pending_admins=pending_admins)
+# Approve admin route
+@app.route('/approve_admin/<int:user_id>', methods=['POST'])
+@login_required
+def approve_admin(user_id):
+    # Only allow active admins to approve
+    if not g.user or g.user.get('role') != 'admin' or g.user.get('status') != 'active':
+        return "Unauthorized", 403
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("UPDATE users SET status='active' WHERE id=%s", (user_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return redirect(url_for('admin_dashboard'))
 
 @app.route('/user_dashboard')
 @login_required

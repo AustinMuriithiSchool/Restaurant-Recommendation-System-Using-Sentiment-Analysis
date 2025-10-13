@@ -5,15 +5,11 @@
 <div class="center-box">
     <div class="form-box">
         <h2 style="text-align:center;">Login</h2>
-        <form id="login-form">
-                <label>Email:<br><input type="email" id="login-email" required></label><br>
-                <label>Password:<br><input type="password" id="login-password"></label><br>
-                <button type="button" onclick="authLoginWithPassword()" class="form-button-space">Login with Email & Password</button>
-                <button type="button" onclick="authLoginWithEmailLink()">Login via Email Link (OTP)</button>
-        </form>
-        <form action="/register" method="get" class="register-form-link">
-            <button type="submit">Register</button>
-        </form>
+    <!-- Removed email/password login form and buttons -->
+    <div class="google-signin-container" style="text-align:center; margin-top:1em;">
+        <button type="button" onclick="authLoginWithGoogle()" class="google-signin-btn">Sign in with Google</button>
+    </div>
+        <!-- Removed register button -->
     </div>
 </div>
 <script type="module" src="/static/js/auth.js"></script>
