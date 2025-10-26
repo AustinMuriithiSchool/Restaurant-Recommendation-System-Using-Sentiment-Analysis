@@ -3,10 +3,54 @@
 {% block content %}
 <h2>Welcome, {{ user.username if user and user.username else 'User' }}!</h2>
 <p>This is the user dashboard.</p>
+<form id="restaurant-query-form" method="POST" action="/query-restaurants">
+	<label for="restaurant-query">Find restaurants:</label>
+	<input type="text" id="restaurant-query" name="restaurant_query" placeholder="e.g. give me good restaurants in Nairobi with fish food" required>
+	<button type="submit">Search</button>
+</form>
+
+<div id="restaurant-results">
+	{% if restaurants %}
+		<h3>Recommended Restaurants:</h3>
+		{% for r in restaurants %}
+			<div class="restaurant-card">
+				<h4>{{ r.name }}</h4>
+				<p><strong>Rating:</strong> {{ r.rating if r.rating else 'N/A' }}</p>
+				<p><strong>Address:</strong> {{ r.address }}</p>
+				<p><strong>Match Score:</strong> {{ r.match_score }}</p>
+				<p><strong>Overall Sentiment:</strong> {{ r.overall_sentiment }}</p>
+				<p><strong>Aspects:</strong></p>
+				{% if r.aspect_sentiments and r.aspect_sentiments|length > 0 %}
+					<ul class="aspect-list">
+					{% for aspect, sentiment in r.aspect_sentiments.items() %}
+						<li>{{ aspect }} ({{ sentiment }})</li>
+					{% endfor %}
+					</ul>
+				{% else %}
+					<span>None</span>
+				{% endif %}
+				<p><strong>Sample Reviews:</strong></p>
+				{% if r.sample_reviews and r.sample_reviews|length > 0 %}
+					<ul class="review-list">
+					{% for review in r.sample_reviews %}
+						<li>
+							<em>{{ review.text }}</em><br>
+							<small>Sentiment: {{ review.sentiment }}, Aspects: {{ review.aspect }}</small>
+						</li>
+					{% endfor %}
+					</ul>
+				{% else %}
+					<span>None</span>
+				{% endif %}
+			</div>
+		{% endfor %}
+	{% endif %}
+</div>
+
 <button onclick="authSendPasswordReset()">Reset Password via Email</button>
 <button onclick="authLogout()">Logout</button>
 <script>
-var USER_EMAIL_FROM_TEMPLATE = {{ user.email|tojson }};
+var USER_EMAIL_FROM_TEMPLATE = "{{ user.email|tojson | safe }}";
 </script>
 <script type="module" src="/static/js/auth.js"></script>
 {% endblock %}

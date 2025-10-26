@@ -11,3 +11,6 @@ matplotlib
 reportlab
 torch
 numpy
+requests
+apify-client
+spacy

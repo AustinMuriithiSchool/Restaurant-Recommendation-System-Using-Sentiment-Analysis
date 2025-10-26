@@ -1,4 +1,5 @@
 import os
+import json
 from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, make_response, jsonify, g
 import mysql.connector
@@ -235,6 +236,91 @@ def approve_admin(user_id):
 @login_required
 def user_dashboard():
     return render_template('user_dashboard.html', user=g.user)
+
+
+# New route to process restaurant queries
+@app.route('/query-restaurants', methods=['POST'])
+@login_required
+def query_restaurants():
+    query = request.form.get('restaurant_query')
+    restaurants = []
+    if query:
+        user_id = g.user.get('id') if g.user else None
+        if user_id:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            # Check cache
+            cur.execute("SELECT result_json FROM query_cache WHERE user_id = %s AND query_text = %s", (user_id, query))
+            row = cur.fetchone()
+            if row:
+                print("[DEBUG] Using cached result for query.")
+                import json
+                api_results = json.loads(str(row[0]))
+            else:
+                from apify_api import get_restaurants_from_apify
+                api_results = get_restaurants_from_apify(query)
+                print("[DEBUG] Raw api_results:", api_results)
+                # Save to cache
+                cur.execute("INSERT INTO query_cache (user_id, query_text, result_json) VALUES (%s, %s, %s)", (user_id, query, json.dumps(api_results)))
+                conn.commit()
+            cur.close()
+            conn.close()
+        else:
+            # Fallback: no user id, just call API
+            from apify_api import get_restaurants_from_apify
+            api_results = get_restaurants_from_apify(query)
+            print("[DEBUG] Raw api_results:", api_results)
+        # Bypass filtering for debugging: show all names
+        from mlmodel.predict import predict_sentiment, predict_aspects
+        # Group reviews by restaurant
+        from collections import defaultdict, Counter
+        restaurant_map = defaultdict(list)
+        for r in api_results:
+            restaurant_map[r.get('placeName', 'Unknown')].append(r)
+
+        for name, reviews in restaurant_map.items():
+            aspects_counter = Counter()
+            aspect_sentiments = {}
+            sentiments = []
+            sample_reviews = []
+            address = reviews[0].get('placeAddress', '')
+            ratings = [r.get('reviewRating') for r in reviews if r.get('reviewRating') is not None]
+            avg_rating = round(sum(ratings) / len(ratings), 2) if ratings else None
+            for r in reviews:
+                review_text = r.get('reviewText', '')
+                sentiment = predict_sentiment(review_text) if review_text else 'neutral'
+                aspects = predict_aspects(review_text) if review_text else []
+                sentiments.append(sentiment)
+                for aspect in aspects:
+                    aspects_counter[aspect] += 1
+                    aspect_sentiments[aspect] = sentiment
+                if len(sample_reviews) < 3 and review_text:
+                    sample_reviews.append({
+                        'text': review_text,
+                        'sentiment': sentiment,
+                        'aspect': ', '.join(aspects) if aspects else 'none'
+                    })
+            # Calculate overall sentiment
+            overall_sentiment = Counter(sentiments).most_common(1)[0][0] if sentiments else 'neutral'
+            # Calculate match score: positive sentiment AND at least one aspect
+            match_score = 0
+            for r in reviews:
+                review_text = r.get('reviewText', '')
+                sentiment = predict_sentiment(review_text) if review_text else 'neutral'
+                aspects = predict_aspects(review_text) if review_text else []
+                if sentiment == 'positive' and aspects:
+                    match_score += 1
+            restaurants.append({
+                'name': name,
+                'rating': avg_rating,
+                'address': address,
+                'match_score': match_score,
+                'overall_sentiment': overall_sentiment,
+                'aspect_sentiments': aspect_sentiments,
+                'sample_reviews': sample_reviews
+            })
+
+    return render_template('user_dashboard.html', user=g.user, restaurants=restaurants)
 
 
 @app.route('/dashboard')

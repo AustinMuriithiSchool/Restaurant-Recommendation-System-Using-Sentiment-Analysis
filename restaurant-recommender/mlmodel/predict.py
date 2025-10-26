@@ -1,19 +1,25 @@
+
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import numpy as np
 import json
+import os
+
+# Use absolute paths for model directories
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+sentiment_dir = os.path.join(BASE_DIR, "outputs_distilroberta_base_restaurant", "sentiment")
+aspect_dir = os.path.join(BASE_DIR, "outputs_distilroberta_base_restaurant", "aspects")
 
 # Load sentiment model and tokenizer
-sentiment_dir = './outputs_distilroberta_base_restaurant/sentiment'
-tokenizer = AutoTokenizer.from_pretrained(sentiment_dir)
-sentiment_model = AutoModelForSequenceClassification.from_pretrained(sentiment_dir)
+tokenizer = AutoTokenizer.from_pretrained(sentiment_dir, local_files_only=True)
+sentiment_model = AutoModelForSequenceClassification.from_pretrained(sentiment_dir, local_files_only=True)
 
 # Load aspect model
-aspect_dir = './outputs_distilroberta_base_restaurant/aspects'
-aspect_model = AutoModelForSequenceClassification.from_pretrained(aspect_dir)
+aspect_model = AutoModelForSequenceClassification.from_pretrained(aspect_dir, local_files_only=True)
 
 # Load aspect and sentiment labels
-with open('./outputs_distilroberta_base_restaurant/label_info.json', 'r') as f:
+label_info_path = os.path.join(BASE_DIR, "outputs_distilroberta_base_restaurant", "label_info.json")
+with open(label_info_path, 'r') as f:
     label_info = json.load(f)
 sentiment_labels = label_info['sentiment_labels']
 aspect_labels = label_info['aspect_labels']
