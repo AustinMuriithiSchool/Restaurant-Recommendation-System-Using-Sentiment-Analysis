@@ -1,3 +1,28 @@
+/* Restaurant card styles */
+.restaurant-card {
+	border: 1px solid #ccc;
+	margin-bottom: 20px;
+	padding: 10px;
+	border-radius: 6px;
+	background: #fafafa;
+}
+.aspect-list {
+	list-style: none;
+	padding-left: 0;
+	margin-bottom: 0;
+	display: flex;
+	flex-wrap: wrap;
+}
+.aspect-list li {
+	margin-right: 10px;
+	background: #e6f7ff;
+	padding: 2px 8px;
+	border-radius: 4px;
+	font-size: 0.95em;
+}
+.review-list {
+	margin-top: 5px;
+}
 /* Google Sign-In button style */
 .google-signin-btn {
 	background: #4285F4;
