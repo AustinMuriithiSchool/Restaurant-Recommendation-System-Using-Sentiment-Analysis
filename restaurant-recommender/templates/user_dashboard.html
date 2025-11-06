@@ -1,56 +1,192 @@
 {% extends 'base.html' %}
 {% block title %}User Dashboard{% endblock %}
 {% block content %}
-<h2>Welcome, {{ user.username if user and user.username else 'User' }}!</h2>
-<p>This is the user dashboard.</p>
-<form id="restaurant-query-form" method="POST" action="/query-restaurants">
-	<label for="restaurant-query">Find restaurants:</label>
-	<input type="text" id="restaurant-query" name="restaurant_query" placeholder="e.g. give me good restaurants in Nairobi with fish food" required>
-	<button type="submit">Search</button>
-</form>
-
-<div id="restaurant-results">
-	{% if restaurants %}
-		<h3>Recommended Restaurants:</h3>
-		{% for r in restaurants %}
-			<div class="restaurant-card">
-				<h4>{{ r.name }}</h4>
-				<p><strong>Rating:</strong> {{ r.rating if r.rating else 'N/A' }}</p>
-				<p><strong>Address:</strong> {{ r.address }}</p>
-				<p><strong>Match Score:</strong> {{ r.match_score }}</p>
-				<p><strong>Overall Sentiment:</strong> {{ r.overall_sentiment }}</p>
-				<p><strong>Aspects:</strong></p>
-				{% if r.aspect_sentiments and r.aspect_sentiments|length > 0 %}
-					<ul class="aspect-list">
-					{% for aspect, sentiment in r.aspect_sentiments.items() %}
-						<li>{{ aspect }} ({{ sentiment }})</li>
-					{% endfor %}
-					</ul>
-				{% else %}
-					<span>None</span>
-				{% endif %}
-				<p><strong>Sample Reviews:</strong></p>
-				{% if r.sample_reviews and r.sample_reviews|length > 0 %}
-					<ul class="review-list">
-					{% for review in r.sample_reviews %}
-						<li>
-							<em>{{ review.text }}</em><br>
-							<small>Sentiment: {{ review.sentiment }}, Aspects: {{ review.aspect }}</small>
-						</li>
-					{% endfor %}
-					</ul>
-				{% else %}
-					<span>None</span>
-				{% endif %}
-			</div>
-		{% endfor %}
-	{% endif %}
+<div class="dashboard-welcome-center">
+	<h2 style="margin-bottom: 0.75rem;">Welcome, {{ user.username if user and user.username else 'User' }}!</h2>
+	<p style="margin-bottom: 0.75rem;">Find the best restaurants tailored to your taste</p>
+	<p>What are you craving?</p>
 </div>
 
-<button onclick="authSendPasswordReset()">Reset Password via Email</button>
-<button onclick="authLogout()">Logout</button>
+<div class="dashboard-vertical">
+	<div class="dashboard-query-center">
+		<form id="restaurant-query-form" method="POST" action="/query-restaurants" class="dashboard-query-form">
+			<textarea id="restaurant-query" name="restaurant_query" placeholder="e.g. give me good restaurants in Nairobi with fish food" required class="dashboard-query-textarea"></textarea>
+			<button type="submit">Search Restaurants</button>
+		</form>
+	</div>
+
+	<!-- Loading Animation -->
+	<div id="loading-container" style="display: none;">
+		<div class="loading-card">
+			<div class="loading-spinner"></div>
+			<h3 id="loading-message">Searching for restaurants...</h3>
+			<p id="loading-submessage">This may take 30-60 seconds</p>
+		</div>
+	</div>
+
+	<!-- Results Section -->
+	<div id="restaurant-results" class="dashboard-results">
+		{% if restaurants %}
+			<h3>Results for: "{{ request.form.restaurant_query if request.form.restaurant_query else '' }}"</h3>
+			<h4>{{ restaurants|length }} Restaurant{{ 's' if restaurants|length != 1 else '' }} Found</h4>
+			<div class="restaurant-row-container">
+				{% for r in restaurants %}
+					{% if loop.index0 % 3 == 0 %}
+						<div class="restaurant-row">
+					{% endif %}
+					<div class="restaurant-card">
+						<h4>{{ r.name }}</h4>
+						<p><strong>⭐ Rating:</strong> {{ r.rating if r.rating else 'N/A' }}</p>
+						<p><strong>📍 Address:</strong> {{ r.address }}</p>
+						<p><strong>🎯 Match Score:</strong> {{ r.match_score }}</p>
+						<p><strong>💭 Overall Sentiment:</strong> {{ r.overall_sentiment }}</p>
+						
+						<p><strong>Key Aspects:</strong></p>
+						{% if r.aspect_sentiments and r.aspect_sentiments|length > 0 %}
+							<ul class="aspect-list">
+							{% for aspect, sentiment in r.aspect_sentiments.items() %}
+								<li>{{ aspect }}: {{ sentiment }}</li>
+							{% endfor %}
+							</ul>
+						{% else %}
+							<span class="no-data">No aspects available</span>
+						{% endif %}
+						
+						<p><strong>Sample Reviews:</strong></p>
+						{% if r.sample_reviews and r.sample_reviews|length > 0 %}
+							<ul class="review-list">
+							{% for review in r.sample_reviews %}
+								<li>
+									<em>"{{ review.text }}"</em><br>
+									<small>Sentiment: {{ review.sentiment }} | Aspects: {{ review.aspect }}</small>
+								</li>
+							{% endfor %}
+							</ul>
+						{% else %}
+							<span class="no-data">No reviews available</span>
+						{% endif %}
+					</div>
+					{% if loop.index0 % 3 == 2 or loop.last %}
+						</div>
+					{% endif %}
+				{% endfor %}
+			</div>
+		{% endif %}
+	</div>
+</div>
+
+<style>
+/* Loading Animation Styles */
+.loading-card {
+	background: white;
+	padding: 3rem;
+	border-radius: 20px;
+	box-shadow: 0 8px 24px rgba(102, 126, 234, 0.15);
+	text-align: center;
+	max-width: 500px;
+	margin: 2rem auto;
+	animation: fadeIn 0.3s;
+}
+
+.loading-spinner {
+	width: 60px;
+	height: 60px;
+	border: 5px solid #e2e8f0;
+	border-top: 5px solid #667eea;
+	border-radius: 50%;
+	margin: 0 auto 1.5rem;
+	animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+	0% { transform: rotate(0deg); }
+	100% { transform: rotate(360deg); }
+}
+
+#loading-message {
+	color: #2d3748;
+	margin-bottom: 0.5rem;
+	font-size: 1.5rem;
+}
+
+#loading-submessage {
+	color: #718096;
+	font-size: 1rem;
+}
+
+/* Enhanced Restaurant Cards */
+.restaurant-card h4 {
+	color: #667eea;
+	font-size: 1.4rem;
+	margin-bottom: 1rem;
+	border-bottom: 2px solid #e2e8f0;
+	padding-bottom: 0.5rem;
+}
+
+.restaurant-card p {
+	margin-bottom: 0.75rem;
+	line-height: 1.6;
+}
+
+.restaurant-card strong {
+	color: #4a5568;
+}
+
+.no-data {
+	color: #a0aec0;
+	font-style: italic;
+}
+
+.review-list {
+	list-style: none;
+	padding: 0;
+}
+
+.review-list li {
+	background: #f7fafc;
+	padding: 0.75rem;
+	margin-bottom: 0.5rem;
+	border-radius: 8px;
+	border-left: 3px solid #667eea;
+}
+
+.review-list em {
+	color: #2d3748;
+	display: block;
+	margin-bottom: 0.5rem;
+}
+
+.review-list small {
+	color: #718096;
+}
+</style>
+
 <script>
-var USER_EMAIL_FROM_TEMPLATE = "{{ user.email|tojson | safe }}";
+var USER_EMAIL_FROM_TEMPLATE = {{ user.email|tojson | safe }};
+
+// Show loading animation on form submit
+document.getElementById('restaurant-query-form').addEventListener('submit', function() {
+	document.getElementById('loading-container').style.display = 'block';
+	document.getElementById('restaurant-results').style.display = 'none';
+	
+	// Update loading messages
+	const messages = [
+		{ main: "Searching for restaurants...", sub: "This may take 30-60 seconds" },
+		{ main: "Fetching reviews...", sub: "Analyzing customer feedback" },
+		{ main: "Calculating match scores...", sub: "Finding the best options for you" },
+		{ main: "Almost there...", sub: "Preparing your results" }
+	];
+	
+	let currentMessage = 0;
+	const interval = setInterval(() => {
+		currentMessage = (currentMessage + 1) % messages.length;
+		document.getElementById('loading-message').textContent = messages[currentMessage].main;
+		document.getElementById('loading-submessage').textContent = messages[currentMessage].sub;
+	}, 8000);
+	
+	// Clear interval when page reloads (form submission completes)
+	window.addEventListener('beforeunload', () => clearInterval(interval));
+});
 </script>
 <script type="module" src="/static/js/auth.js"></script>
 {% endblock %}

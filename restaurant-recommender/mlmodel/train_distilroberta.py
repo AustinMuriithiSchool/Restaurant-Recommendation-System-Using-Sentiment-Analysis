@@ -15,16 +15,16 @@ from transformers import (
 ASPECT_SYNONYMS: Dict[str, List[str]] = {
     # 1) FOOD & TASTE
     "food": [
-        "food","meal","dish","cuisine","taste","flavor","flavour","aroma","smell","presentation","plating",
+        "food","meal","meat","dish","cuisine","taste","flavor","flavour","aroma","smell","presentation","plating",
         "fresh","stale","delicious","tasty","yummy","bland","spicy","salty","sweet","sour","bitter",
         "juicy","tender","crispy","crunchy","dry","oily","greasy","overcooked","undercooked","burnt","raw",
-        "ingredients","recipe","specialty","nyama","ugali","chapati","fish","chicken","beef","pizza","burger",
+        "ingredients","recipe","specialty","pilau","nyama","nyama choma","ugali","chapati","fish","chicken","beef","pizza","burger",
         "fries","chips","bbq","grilled","fried","boiled","roast","soup","dessert","cake","pastry","sandwich","biryani"
     ],
 
     # 2) DRINKS & BAR
     "drinks": [
-        "drink","drinks","beverage","cocktail","mocktail","juice","smoothie","soda","water","milkshake",
+        "drink","drinks","beverage","cocktail","cocktails","mocktail","juice","smoothie","soda","water","milkshake",
         "coffee","tea","espresso","latte","cappuccino","mocha","beer","wine","whiskey","vodka","rum","gin",
         "cider","spirits","liquor","bar","bartender","brewed","chilled","iced","hot drink","alcohol","non-alcoholic"
     ],

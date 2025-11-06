@@ -8,16 +8,18 @@
 </head>
 <body>
     <header class="header">
-        <div class="container">
+        <div class="container header-flex">
             <h1 class="logo">NourishNet</h1>
-            <nav>
+            <nav class="header-nav">
                 {% if user %}
                     <span>Logged in as {{ user.username if user.username else user.email }}</span>
+                    <button onclick="authSendPasswordReset()" class="header-btn">Reset Password</button>
+                    <button onclick="authLogout()" class="header-btn">Logout</button>
                 {% endif %}
             </nav>
         </div>
     </header>
-    <main class="container fade-in">
+    <main class="dashboard-main fade-in">
         {% block content %}{% endblock %}
     </main>
     <footer class="footer">
