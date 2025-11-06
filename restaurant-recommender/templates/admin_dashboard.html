@@ -2,12 +2,9 @@
 {% block title %}Admin Dashboard{% endblock %}
 {% block content %}
 <h2>Welcome, {{ user.username if user and user.username else 'Admin' }}!</h2>
-<p>This is the admin dashboard.</p>
-<button onclick="authSendPasswordReset()">Reset Password via Email</button>
-<button onclick="authLogout()">Logout</button>
 
+<h3 class="section-heading">Pending Admin Approvals</h3>
 {% if pending_admins and pending_admins|length > 0 %}
-	<h3>Pending Admin Approvals</h3>
 	<table style="margin-top:1em;">
 		<tr><th>Username</th><th>Email</th><th>Action</th></tr>
 		{% for admin in pending_admins %}
@@ -25,6 +22,42 @@
 {% else %}
 	<p>No pending admin approvals.</p>
 {% endif %}
+
+<h3 class="section-heading">All Registered Users</h3>
+<table class="user-table">
+	<tr><th>Username</th><th>Email</th><th>Role</th></tr>
+	{% for u in all_users %}
+		<tr>
+			<td>{{ u[0] }}</td>
+			<td>{{ u[1] }}</td>
+			<td>{{ u[2] }}</td>
+		</tr>
+	{% endfor %}
+</table>
+<style>
+.user-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1em;
+}
+.user-table th, .user-table td {
+  padding: 0.75em 1em;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+}
+.user-table th {
+  background: #f7fafc;
+  color: #2d3748;
+  font-weight: 600;
+}
+.user-table tr:last-child td {
+  border-bottom: none;
+}
+.section-heading {
+  margin-top: 2em;
+  margin-bottom: 0.5em;
+}
+</style>
 <script>
 var USER_EMAIL_FROM_TEMPLATE = {{ user.email|tojson }};
 </script>

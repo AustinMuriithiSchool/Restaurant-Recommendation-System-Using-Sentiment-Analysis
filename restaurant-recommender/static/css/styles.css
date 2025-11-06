@@ -91,9 +91,8 @@ body {
     max-width: 100vw;
     min-height: 80vh;
     background: #fff;
-    margin: 2rem auto;
     padding: 2rem;
-    border-radius: 20px;
+    border-radius: 0;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
     display: flex;
     flex-direction: column;

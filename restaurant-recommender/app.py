@@ -215,9 +215,12 @@ def admin_dashboard():
     cur = conn.cursor()
     cur.execute("SELECT id, username, email FROM users WHERE role='admin' AND status='pending'")
     pending_admins = cur.fetchall()
+    # Fetch all users for display
+    cur.execute("SELECT username, email, role FROM users")
+    all_users = cur.fetchall()
     cur.close()
     conn.close()
-    return render_template('admin_dashboard.html', user=g.user, pending_admins=pending_admins)
+    return render_template('admin_dashboard.html', user=g.user, pending_admins=pending_admins, all_users=all_users)
 # Approve admin route
 @app.route('/approve_admin/<int:user_id>', methods=['POST'])
 @login_required
