@@ -1,5 +1,6 @@
 import os
 import json
+import json
 from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, make_response, jsonify, g
 import mysql.connector
@@ -245,6 +246,17 @@ def query_restaurants():
     query = request.form.get('restaurant_query')
     restaurants = []
     if query:
+        # Extract aspect keywords from query using synonyms
+        aspect_keywords = []
+        from mlmodel.train_distilroberta import ASPECT_SYNONYMS
+        query_lower = query.lower()
+        for aspect, synonyms in ASPECT_SYNONYMS.items():
+            for syn in synonyms:
+                if syn.lower() in query_lower:
+                    aspect_keywords.append(aspect)
+                    break
+        print(f"[DEBUG] Extracted aspect keywords from query (using synonyms): {aspect_keywords}")
+
         user_id = g.user.get('id') if g.user else None
         if user_id:
             conn = get_db_connection()
@@ -270,14 +282,13 @@ def query_restaurants():
             from apify_api import get_restaurants_from_apify
             api_results = get_restaurants_from_apify(query)
             print("[DEBUG] Raw api_results:", api_results)
-        # Bypass filtering for debugging: show all names
         from mlmodel.predict import predict_sentiment, predict_aspects
-        # Group reviews by restaurant
         from collections import defaultdict, Counter
         restaurant_map = defaultdict(list)
         for r in api_results:
             restaurant_map[r.get('placeName', 'Unknown')].append(r)
 
+        restaurant_list = []
         for name, reviews in restaurant_map.items():
             aspects_counter = Counter()
             aspect_sentiments = {}
@@ -286,39 +297,84 @@ def query_restaurants():
             address = reviews[0].get('placeAddress', '')
             ratings = [r.get('reviewRating') for r in reviews if r.get('reviewRating') is not None]
             avg_rating = round(sum(ratings) / len(ratings), 2) if ratings else None
+
+            # Build reverse synonym map for aspect matching
+            from mlmodel.train_distilroberta import ASPECT_SYNONYMS
+            synonym_to_aspect = {}
+            for aspect, synonyms in ASPECT_SYNONYMS.items():
+                for syn in synonyms:
+                    synonym_to_aspect[syn.lower()] = aspect
+
+            # Filter reviews strictly by aspect
+            filtered_reviews = []
+
+            # Build set of direct query words and their synonyms from the query
+            query_words = set()
+            query_lower = query.lower()
+            for ak in aspect_keywords:
+                for syn in ASPECT_SYNONYMS.get(ak, []):
+                    if syn.lower() in query_lower:
+                        query_words.add(syn.lower())
+            # If no direct match, fall back to the original query word
+            if not query_words:
+                for word in query_lower.split():
+                    query_words.add(word)
+
             for r in reviews:
                 review_text = r.get('reviewText', '')
                 sentiment = predict_sentiment(review_text) if review_text else 'neutral'
                 aspects = predict_aspects(review_text) if review_text else []
+                # Map predicted aspects to canonical aspect labels using synonyms
+                mapped_aspects = set()
+                for asp in aspects:
+                    asp_lower = asp.lower()
+                    if asp_lower in synonym_to_aspect:
+                        mapped_aspects.add(synonym_to_aspect[asp_lower])
+                    else:
+                        mapped_aspects.add(asp_lower)
                 sentiments.append(sentiment)
-                for aspect in aspects:
+                for aspect in mapped_aspects:
                     aspects_counter[aspect] += 1
                     aspect_sentiments[aspect] = sentiment
-                if len(sample_reviews) < 3 and review_text:
+                # Only include reviews that match the aspect(s) from the query AND mention the exact query word/synonym in text
+                if aspect_keywords:
+                    if any(ak in mapped_aspects for ak in aspect_keywords):
+                        review_text_lower = review_text.lower()
+                        if any(qw in review_text_lower for qw in query_words):
+                            filtered_reviews.append((review_text, sentiment, mapped_aspects))
+                else:
+                    filtered_reviews.append((review_text, sentiment, mapped_aspects))
+            # Use filtered reviews for sample_reviews (show only aspects that match the query)
+            sample_reviews = []
+            for review_text, sentiment, mapped_aspects in filtered_reviews:
+                # Only show aspects that match the query
+                relevant_aspects = [ak for ak in aspect_keywords if ak in mapped_aspects] if aspect_keywords else list(mapped_aspects)
+                if len(sample_reviews) < 3 and review_text and relevant_aspects:
                     sample_reviews.append({
                         'text': review_text,
                         'sentiment': sentiment,
-                        'aspect': ', '.join(aspects) if aspects else 'none'
+                        'aspect': ', '.join(relevant_aspects) if relevant_aspects else 'none'
                     })
             # Calculate overall sentiment
             overall_sentiment = Counter(sentiments).most_common(1)[0][0] if sentiments else 'neutral'
             # Calculate match score: positive sentiment AND at least one aspect
             match_score = 0
-            for r in reviews:
-                review_text = r.get('reviewText', '')
-                sentiment = predict_sentiment(review_text) if review_text else 'neutral'
-                aspects = predict_aspects(review_text) if review_text else []
-                if sentiment == 'positive' and aspects:
+            for review_text, sentiment, mapped_aspects in filtered_reviews:
+                if sentiment == 'positive' and mapped_aspects:
                     match_score += 1
-            restaurants.append({
-                'name': name,
-                'rating': avg_rating,
-                'address': address,
-                'match_score': match_score,
-                'overall_sentiment': overall_sentiment,
-                'aspect_sentiments': aspect_sentiments,
-                'sample_reviews': sample_reviews
-            })
+            # Only show restaurants with at least one matching review
+            if sample_reviews:
+                restaurant_list.append({
+                    'name': name,
+                    'rating': avg_rating,
+                    'address': address,
+                    'match_score': match_score,
+                    'overall_sentiment': overall_sentiment,
+                    'aspect_sentiments': aspect_sentiments,
+                    'sample_reviews': sample_reviews
+                })
+        # Sort restaurants by rating (highest to lowest)
+        restaurants = sorted(restaurant_list, key=lambda x: (x['rating'] is not None, x['rating']), reverse=True)
 
     return render_template('user_dashboard.html', user=g.user, restaurants=restaurants)
 

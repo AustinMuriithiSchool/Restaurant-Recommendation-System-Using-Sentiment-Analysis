@@ -44,13 +44,4 @@ def predict_aspects(text):
     return [aspect_labels[i] for i, v in enumerate(pred) if v == 1]
 
 if __name__ == '__main__':
-    print('Type a restaurant review and press Enter. Press Ctrl+C to exit.')
-    try:
-        while True:
-            review = input('\nEnter review: ')
-            sentiment = predict_sentiment(review)
-            aspects = predict_aspects(review)
-            print(f'Predicted Sentiment: {sentiment}')
-            print('Predicted Aspects:', ', '.join(aspects) if aspects else 'None')
-    except KeyboardInterrupt:
-        print('\nExiting...')
+    pass
