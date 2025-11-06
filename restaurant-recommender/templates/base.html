@@ -12,7 +12,6 @@
             <h1 class="logo">NourishNet</h1>
             <nav class="header-nav">
                 {% if user %}
-                    <span>Logged in as {{ user.username if user.username else user.email }}</span>
                     <button onclick="authSendPasswordReset()" class="header-btn">Reset Password</button>
                     <button onclick="authLogout()" class="header-btn">Logout</button>
                 {% endif %}
