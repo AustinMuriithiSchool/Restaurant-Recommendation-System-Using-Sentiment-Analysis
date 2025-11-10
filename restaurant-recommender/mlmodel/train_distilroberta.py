@@ -110,8 +110,7 @@ ASPECT_SYNONYMS: Dict[str, List[str]] = {
 
     # 14) EVENTS & ENTERTAINMENT
     "events_entertainment": [
-        "event","events","party","celebration","birthday","anniversary","gathering","meeting","function","live",
-        "show","performance","karaoke","game","football","big screen","projector","screening","entertainment","venue hire"
+        "event","events","party","celebration","birthday","anniversary","gathering","meeting","function","live","performance","karaoke","game","football","big screen","projector","screening","entertainment","venue hire"
     ],
 
     # 15) OVERALL EXPERIENCE & RECOMMENDATION

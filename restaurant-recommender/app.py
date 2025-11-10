@@ -412,8 +412,13 @@ def query_restaurants():
                     'aspect_sentiments': aspect_sentiments,
                     'sample_reviews': sample_reviews
                 })
-        # Sort restaurants by rating (highest to lowest)
-        restaurants = sorted(restaurant_list, key=lambda x: (x['rating'] is not None, x['rating']), reverse=True)
+        # Sort restaurants by rating
+        if query_sentiment == 'negative':
+            # For negative queries (e.g., 'worst'), show lowest rated first
+            restaurants = sorted(restaurant_list, key=lambda x: (x['rating'] is not None, x['rating']))
+        else:
+            # For positive/neutral queries, show highest rated first
+            restaurants = sorted(restaurant_list, key=lambda x: (x['rating'] is not None, x['rating']), reverse=True)
         print(f"[DEBUG] Number of restaurants to display: {len(restaurants)}")
 
     return render_template('user_dashboard.html', user=g.user, restaurants=restaurants)
