@@ -40,20 +40,24 @@ def check_user():
 
 def get_user_info(firebase_uid):
     conn = get_db_connection()
-    cur = conn.cursor()
+    cur = conn.cursor(dictionary=True)
     cur.execute('SELECT username, role, status FROM users WHERE firebase_uid = %s', (firebase_uid,))
     result = cur.fetchone()
     cur.close()
     conn.close()
     if result:
-        return {'username': result[0], 'role': result[1], 'status': result[2]}
+        # result is a dict if dictionary=True, else tuple
+        if isinstance(result, dict):
+            return {'username': result.get('username'), 'role': result.get('role'), 'status': result.get('status')}
+        else:
+            return {'username': result[0], 'role': result[1], 'status': result[2]}
     return None
 
 # MySQL config (update with your credentials)
 MYSQL_HOST = os.environ.get('MYSQL_HOST', 'localhost')
 MYSQL_USER = os.environ.get('MYSQL_USER', 'root')
 MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD', '')
-MYSQL_DB = os.environ.get('MYSQL_DB', 'restaurant_db')
+MYSQL_DB = os.environ.get('MYSQL_DB', 'nourishnet')
 
 def get_db_connection():
     return mysql.connector.connect(
@@ -64,13 +68,16 @@ def get_db_connection():
     )
 def get_user_role(firebase_uid):
     conn = get_db_connection()
-    cur = conn.cursor()
+    cur = conn.cursor(dictionary=True)
     cur.execute('SELECT role FROM users WHERE firebase_uid = %s', (firebase_uid,))
     result = cur.fetchone()
     cur.close()
     conn.close()
     if result:
-        return result[0]
+        if isinstance(result, dict):
+            return result.get('role')
+        else:
+            return result[0]
     return None
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -249,84 +256,94 @@ def query_restaurants():
     query = request.form.get('restaurant_query')
     restaurants = []
     if query:
-        # Extract aspect keywords from query using synonyms
-        aspect_keywords = []
-        from mlmodel.train_distilroberta import ASPECT_SYNONYMS
         query_lower = query.lower()
+        from mlmodel.train_distilroberta import ASPECT_SYNONYMS
+        # Improved aspect extraction: match any query word to aspect synonyms
+        aspect_keywords = []
+        query_words = set(query_lower.split())
+        # Extract sentiment from query (default to 'positive' if not found)
+        sentiment_words = {'positive', 'good', 'great', 'excellent', 'amazing', 'nice', 'happy', 'love', 'best', 'awesome', 'delicious', 'friendly', 'clean', 'recommend', 'satisfied', 'enjoyed', 'pleasant', 'wonderful', 'tasty', 'fantastic', 'favorite', 'perfect', 'outstanding', 'superb', 'top', 'like'}
+        negative_words = {'negative', 'bad', 'poor', 'terrible', 'awful', 'worst', 'disappointing', 'unhappy', 'hate', 'dirty', 'rude', 'unpleasant', 'slow', 'cold', 'bland', 'mediocre', 'dislike', 'horrible', 'unfriendly', 'unprofessional', 'unimpressed', 'unacceptable', 'disgusting', 'overpriced', 'noisy', 'uncomfortable'}
+        query_sentiment = 'positive'
+        for word in query_words:
+            if word in negative_words:
+                query_sentiment = 'negative'
+                break
+        # Map: aspect -> set of query words that matched it
+        aspect_to_querywords = {}
         for aspect, synonyms in ASPECT_SYNONYMS.items():
             for syn in synonyms:
-                if syn.lower() in query_lower:
+                if syn.lower() in query_words:
                     aspect_keywords.append(aspect)
-                    break
+                    aspect_to_querywords.setdefault(aspect, set()).add(syn.lower())
+        print(f"[DEBUG] aspect_to_querywords: {aspect_to_querywords}")
         print(f"[DEBUG] Extracted aspect keywords from query (using synonyms): {aspect_keywords}")
+        print(f"[DEBUG] Query: {query}")
+        print(f"[DEBUG] Query sentiment: {query_sentiment}")
 
-        user_id = g.user.get('id') if g.user else None
-        if user_id:
-            conn = get_db_connection()
-            cur = conn.cursor()
-            # Check cache
-            cur.execute("SELECT result_json FROM query_cache WHERE user_id = %s AND query_text = %s", (user_id, query))
-            row = cur.fetchone()
-            if row:
-                print("[DEBUG] Using cached result for query.")
-                import json
-                api_results = json.loads(str(row[0]))
-            else:
-                from apify_api import get_restaurants_from_apify
-                api_results = get_restaurants_from_apify(query)
-                print("[DEBUG] Raw api_results:", api_results)
-                # Save to cache
-                cur.execute("INSERT INTO query_cache (user_id, query_text, result_json) VALUES (%s, %s, %s)", (user_id, query, json.dumps(api_results)))
-                conn.commit()
-            cur.close()
-            conn.close()
-        else:
-            # Fallback: no user id, just call API
-            from apify_api import get_restaurants_from_apify
-            api_results = get_restaurants_from_apify(query)
-            print("[DEBUG] Raw api_results:", api_results)
-        from mlmodel.predict import predict_sentiment, predict_aspects
-        from collections import defaultdict, Counter
+        # Detect location from query
+        locations = ["nairobi", "mombasa", "kisumu", "eldoret", "nakuru"]
+        detected_location = None
+        for loc in locations:
+            if loc in query_lower:
+                detected_location = loc.capitalize()
+                break
+        print(f"[DEBUG] Detected location from query: {detected_location}")
+
+        # Fetch reviews from restaurant_reviews table
+        conn = get_db_connection()
+        cur = conn.cursor(dictionary=True)
+        sql = "SELECT * FROM restaurant_reviews"
+        params = []
+        if detected_location:
+            sql += " WHERE location = %s"
+            params.append(detected_location)
+        cur.execute(sql, params)
+        db_results = cur.fetchall()
+        cur.close()
+        conn.close()
+        print(f"[DEBUG] Number of reviews fetched from DB: {len(db_results)}")
+
+        # Use cached predictions for filtering
+        import json
+        from collections import defaultdict
         restaurant_map = defaultdict(list)
-        for r in api_results:
-            restaurant_map[r.get('placeName', 'Unknown')].append(r)
+        for r in db_results:
+            # Support both dict and tuple row types
+            if isinstance(r, dict):
+                key = r.get('place_name', 'Unknown')
+            else:
+                key = r[3] if len(r) > 3 else 'Unknown'
+            restaurant_map[key].append(r)
 
         restaurant_list = []
+        print(f"[DEBUG] Number of restaurants after grouping: {len(restaurant_map)}")
         for name, reviews in restaurant_map.items():
+            from collections import Counter
             aspects_counter = Counter()
             aspect_sentiments = {}
             sentiments = []
             sample_reviews = []
-            address = reviews[0].get('placeAddress', '')
-            ratings = [r.get('reviewRating') for r in reviews if r.get('reviewRating') is not None]
+            address = reviews[0]['place_address'] if isinstance(reviews[0], dict) and 'place_address' in reviews[0] else (reviews[0][4] if len(reviews[0]) > 4 else '')
+            ratings = [r['review_rating'] if isinstance(r, dict) else r[7] for r in reviews if (r['review_rating'] if isinstance(r, dict) else r[7]) is not None]
             avg_rating = round(sum(ratings) / len(ratings), 2) if ratings else None
-
             # Build reverse synonym map for aspect matching
-            from mlmodel.train_distilroberta import ASPECT_SYNONYMS
             synonym_to_aspect = {}
             for aspect, synonyms in ASPECT_SYNONYMS.items():
                 for syn in synonyms:
                     synonym_to_aspect[syn.lower()] = aspect
-
-            # Filter reviews strictly by aspect
+            # Filter reviews strictly by aspect and sentiment using cached predictions
             filtered_reviews = []
-
-            # Build set of direct query words and their synonyms from the query
-            query_words = set()
-            query_lower = query.lower()
-            for ak in aspect_keywords:
-                for syn in ASPECT_SYNONYMS.get(ak, []):
-                    if syn.lower() in query_lower:
-                        query_words.add(syn.lower())
-            # If no direct match, fall back to the original query word
-            if not query_words:
-                for word in query_lower.split():
-                    query_words.add(word)
-
+            match_score = 0
             for r in reviews:
-                review_text = r.get('reviewText', '')
-                sentiment = predict_sentiment(review_text) if review_text else 'neutral'
-                aspects = predict_aspects(review_text) if review_text else []
+                if isinstance(r, dict):
+                    review_text = r.get('review_text', '')
+                    sentiment = r.get('predicted_sentiment', 'neutral')
+                    aspects = json.loads(r.get('predicted_aspects', '[]')) if r.get('predicted_aspects') else []
+                else:
+                    review_text = r[6] if len(r) > 6 else ''
+                    sentiment = r[9] if len(r) > 9 else 'neutral'
+                    aspects = json.loads(r[10]) if len(r) > 10 and r[10] else []
                 # Map predicted aspects to canonical aspect labels using synonyms
                 mapped_aspects = set()
                 for asp in aspects:
@@ -339,32 +356,51 @@ def query_restaurants():
                 for aspect in mapped_aspects:
                     aspects_counter[aspect] += 1
                     aspect_sentiments[aspect] = sentiment
-                # Only include reviews that match the aspect(s) from the query AND mention the exact query word/synonym in text
+                import re
+                review_text_lower = review_text.lower()
                 if aspect_keywords:
-                    if any(ak in mapped_aspects for ak in aspect_keywords):
-                        review_text_lower = review_text.lower()
-                        if any(qw in review_text_lower for qw in query_words):
-                            filtered_reviews.append((review_text, sentiment, mapped_aspects))
+                    # Require all aspects to match
+                    all_aspects_match = True
+                    for ak in aspect_keywords:
+                        if ak not in mapped_aspects:
+                            all_aspects_match = False
+                            break
+                        querywords_for_aspect = aspect_to_querywords.get(ak, set())
+                        if not any(re.search(r'\b' + re.escape(qw) + r'\b', review_text_lower) for qw in querywords_for_aspect):
+                            all_aspects_match = False
+                            break
+                    if all_aspects_match:
+                        print(f"[DEBUG] Including review: '{review_text}' | matched all aspects: {aspect_keywords}")
+                        filtered_reviews.append((review_text, sentiment, mapped_aspects))
                 else:
-                    filtered_reviews.append((review_text, sentiment, mapped_aspects))
-            # Use filtered reviews for sample_reviews (show only aspects that match the query)
-            sample_reviews = []
-            for review_text, sentiment, mapped_aspects in filtered_reviews:
-                # Only show aspects that match the query
-                relevant_aspects = [ak for ak in aspect_keywords if ak in mapped_aspects] if aspect_keywords else list(mapped_aspects)
-                if len(sample_reviews) < 3 and review_text and relevant_aspects:
-                    sample_reviews.append({
-                        'text': review_text,
-                        'sentiment': sentiment,
-                        'aspect': ', '.join(relevant_aspects) if relevant_aspects else 'none'
-                    })
-            # Calculate overall sentiment
-            overall_sentiment = Counter(sentiments).most_common(1)[0][0] if sentiments else 'neutral'
-            # Calculate match score: positive sentiment AND at least one aspect
-            match_score = 0
-            for review_text, sentiment, mapped_aspects in filtered_reviews:
+                    # No aspect filter, just sentiment
+                    if sentiment == query_sentiment:
+                        print(f"[DEBUG] Including review: '{review_text}' | no aspect filter, sentiment matched")
+                        filtered_reviews.append((review_text, sentiment, mapped_aspects))
                 if sentiment == 'positive' and mapped_aspects:
                     match_score += 1
+            # Use filtered reviews for sample_reviews (show only aspects and sentiment that match the query)
+            sample_reviews = []
+            for review_text, sentiment, mapped_aspects in filtered_reviews:
+                relevant_aspects = [ak for ak in aspect_keywords if ak in mapped_aspects]
+                # If there are aspects in the query, require relevant_aspects; otherwise, allow all
+                if len(sample_reviews) < 3 and review_text and sentiment == query_sentiment:
+                    if aspect_keywords:
+                        if relevant_aspects:
+                            sample_reviews.append({
+                                'text': review_text,
+                                'sentiment': sentiment,
+                                'aspect': ', '.join(relevant_aspects) if relevant_aspects else 'none'
+                            })
+                    else:
+                        sample_reviews.append({
+                            'text': review_text,
+                            'sentiment': sentiment,
+                            'aspect': 'none'
+                        })
+            # Calculate overall sentiment
+            from collections import Counter
+            overall_sentiment = Counter(sentiments).most_common(1)[0][0] if sentiments else 'neutral'
             # Only show restaurants with at least one matching review
             if sample_reviews:
                 restaurant_list.append({
@@ -378,6 +414,7 @@ def query_restaurants():
                 })
         # Sort restaurants by rating (highest to lowest)
         restaurants = sorted(restaurant_list, key=lambda x: (x['rating'] is not None, x['rating']), reverse=True)
+        print(f"[DEBUG] Number of restaurants to display: {len(restaurants)}")
 
     return render_template('user_dashboard.html', user=g.user, restaurants=restaurants)
 
