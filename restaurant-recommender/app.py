@@ -8,6 +8,9 @@ from dotenv import load_dotenv
 import firebase_admin
 from firebase_admin import auth as fb_auth, credentials
 from itsdangerous import URLSafeTimedSerializer
+from werkzeug.utils import secure_filename
+from review_utils import insert_reviews_from_list
+from review_prediction_utils import backfill_predictions
 
 load_dotenv()
 
@@ -465,8 +468,72 @@ def session_login():
         import traceback; traceback.print_exc()
         return jsonify({'error': 'Failed to create session cookie', 'details': str(e)}), 401
     
-    
-    
+# Admin upload reviews route (moved after login_required definition)
+@app.route('/admin/upload_reviews', methods=['POST'])
+@login_required
+def upload_reviews():
+    # Only allow active admins
+    if not g.user or g.user.get('role') != 'admin' or g.user.get('status') != 'active':
+        return "Unauthorized", 403
+    if 'reviews_json' not in request.files:
+        return "No file part", 400
+    file = request.files['reviews_json']
+    if file.filename == '':
+        return "No selected file", 400
+    if not file.filename.lower().endswith('.json'):
+        return "Invalid file type. Please upload a JSON file.", 400
+    try:
+        data = json.load(file)
+        if not isinstance(data, list):
+            return "JSON must be a list of reviews", 400
+        conn = get_db_connection()
+        inserted, skipped = insert_reviews_from_list(data, conn)
+        conn.close()
+        msg = f"Upload complete: {inserted} reviews added, {skipped} skipped (duplicates or invalid)."
+        # Fetch updated data for dashboard
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT id, username, email FROM users WHERE role='admin' AND status='pending'")
+        pending_admins = cur.fetchall()
+        cur.execute("SELECT username, email, role FROM users")
+        all_users = cur.fetchall()
+        cur.close()
+        conn.close()
+        return render_template('admin_dashboard.html', user=g.user, pending_admins=pending_admins, all_users=all_users, upload_message=msg)
+    except Exception as e:
+        print('[DEBUG] Error processing uploaded reviews:', e)
+        import traceback; traceback.print_exc()
+        return f"Error processing file: {e}", 500    
+
+# Admin update predictions route
+@app.route('/admin/update_predictions', methods=['POST'])
+@login_required
+def update_predictions():
+    # Only allow active admins
+    if not g.user or g.user.get('role') != 'admin' or g.user.get('status') != 'active':
+        return "Unauthorized", 403
+    try:
+        conn = get_db_connection()
+        updated, total = backfill_predictions(conn)
+        conn.close()
+        msg = f"Prediction update complete: {updated} reviews updated out of {total} found needing predictions."
+        # Fetch updated data for dashboard
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT id, username, email FROM users WHERE role='admin' AND status='pending'")
+        pending_admins = cur.fetchall()
+        cur.execute("SELECT username, email, role FROM users")
+        all_users = cur.fetchall()
+        cur.close()
+        conn.close()
+        return render_template('admin_dashboard.html', user=g.user, pending_admins=pending_admins, all_users=all_users, prediction_message=msg)
+    except Exception as e:
+        print('[DEBUG] Error updating predictions:', e)
+        import traceback; traceback.print_exc()
+        return f"Error updating predictions: {e}", 500
+
+
+
 @app.route('/sessionLogout', methods=['POST'])
 @app.route('/logout', methods=['GET'])
 def session_logout():
