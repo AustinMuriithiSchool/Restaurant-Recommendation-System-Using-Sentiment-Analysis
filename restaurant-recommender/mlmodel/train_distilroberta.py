@@ -56,7 +56,7 @@ ASPECT_SYNONYMS: Dict[str, List[str]] = {
         "lively","calm","peaceful","crowded","spacious","cramped","lighting","dim","bright","decor","interior",
         "design","aesthetic","theme","furniture","layout","arrangement","music","playlist","dj","band","live music",
         "sound","noise","noisy","quiet","volume","speaker","temperature","hot","cold","warm","chilly",
-        "air conditioning","ac","ventilation","draft"
+        "air conditioning","ac","ventilation","draft","family","kid"
     ],
 
     # 7) CLEANLINESS & HYGIENE (incl. restrooms)
@@ -68,7 +68,7 @@ ASPECT_SYNONYMS: Dict[str, List[str]] = {
 
     # 8) LOCATION & ACCESS (incl. parking & accessibility)
     "location_access": [
-        "location","place","area","neighborhood","nearby","close","far","distance","around","corner","landmark",
+        "location","area","neighborhood","nearby","close","far","distance","around","corner","landmark",
         "downtown","uptown","street","road","avenue","plaza","mall","view","scenery","directions","map",
         "accessible","accessibility","wheelchair","ramp","stairs","elevator","lift","entrance","exit","signage",
         "parking","car park","valet","garage","spot","space","traffic","convenience","transport","bus","taxi","uber"
