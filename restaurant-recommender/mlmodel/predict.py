@@ -6,9 +6,10 @@ import json
 import os
 
 # Use absolute paths for model directories
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-sentiment_dir = os.path.join(BASE_DIR, "outputs_distilroberta_base_restaurant", "sentiment")
-aspect_dir = os.path.join(BASE_DIR, "outputs_distilroberta_base_restaurant", "aspects")
+sentiment_dir = os.path.join(BASE_DIR, "outputs_distilroberta_base_restaurant", "sentiment").replace("\\", "/")
+aspect_dir = os.path.join(BASE_DIR, "outputs_distilroberta_base_restaurant", "aspects").replace("\\", "/")
 
 # Load sentiment model and tokenizer
 tokenizer = AutoTokenizer.from_pretrained(sentiment_dir, local_files_only=True)

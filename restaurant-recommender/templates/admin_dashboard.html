@@ -34,9 +34,30 @@
 		</tr>
 	{% endfor %}
 </table>
+
+<h3 class="section-heading">Upload Reviews (JSON)</h3>
+{% if upload_message %}
+  <div class="upload-message">{{ upload_message }}</div>
+{% endif %}
+<form action="{{ url_for('upload_reviews') }}" method="post" enctype="multipart/form-data" class="upload-form">
+	<label for="reviews_json">Select JSON file to upload:</label>
+	<input type="file" id="reviews_json" name="reviews_json" accept="application/json" required title="Choose a JSON file with reviews">
+	<button type="submit">Upload Reviews</button>
+</form>
+
+<h3 class="section-heading">Update Review Predictions</h3>
+{% if prediction_message %}
+  <div class="upload-message">{{ prediction_message }}</div>
+{% endif %}
+<form action="{{ url_for('update_predictions') }}" method="post" class="upload-form">
+  <button type="submit">Update Review Predictions</button>
+</form>
 <style>
-.user-table {
-  width: 100%;
+.upload-form {
+  margin-top: 1em;
+}
+.upload-form label {
+  margin-right: 0.5em;
   border-collapse: collapse;
   margin-top: 1em;
 }
@@ -56,6 +77,21 @@
 .section-heading {
   margin-top: 2em;
   margin-bottom: 0.5em;
+}
+.upload-message {
+	margin-top: 1em;
+	padding: 0.75em 1em;
+	background: #e6ffed;
+	color: #22543d;
+	border: 1px solid #b7f5d8;
+	border-radius: 4px;
+	font-weight: 500;
+}
+.upload-form {
+	margin-top: 1em;
+}
+.upload-form label {
+	margin-right: 0.5em;
 }
 </style>
 <script>
