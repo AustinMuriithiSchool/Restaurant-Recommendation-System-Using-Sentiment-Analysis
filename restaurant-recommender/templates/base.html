@@ -13,6 +13,9 @@
             <nav class="header-nav">
                 {% if user %}
                     <button onclick="authSendPasswordReset()" class="header-btn">Reset Password</button>
+                    {% if user.role == 'admin' %}
+                        <a href="{{ url_for('admin_analytics') }}" class="header-btn" style="text-decoration:none;">View Analytics</a>
+                    {% endif %}
                     <button onclick="authLogout()" class="header-btn">Logout</button>
                 {% endif %}
             </nav>

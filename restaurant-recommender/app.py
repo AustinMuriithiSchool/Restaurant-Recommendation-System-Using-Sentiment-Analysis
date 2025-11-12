@@ -2,7 +2,7 @@ import os
 import json
 import json
 from functools import wraps
-from flask import Flask, render_template, request, redirect, url_for, make_response, jsonify, g
+from flask import Flask, render_template, request, redirect, url_for, make_response, jsonify, g, send_file
 import mysql.connector
 from dotenv import load_dotenv
 import firebase_admin
@@ -11,6 +11,13 @@ from itsdangerous import URLSafeTimedSerializer
 from werkzeug.utils import secure_filename
 from review_utils import insert_reviews_from_list
 from review_prediction_utils import backfill_predictions
+
+from io import BytesIO
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import inch
 
 load_dotenv()
 
@@ -228,9 +235,51 @@ def admin_dashboard():
     # Fetch all users for display
     cur.execute("SELECT username, email, role FROM users")
     all_users = cur.fetchall()
+
+    # --- Analytics: Aggregate sentiment and aspect data per restaurant ---
+    analytics_data = []
+    cur2 = conn.cursor(dictionary=True)
+    cur2.execute("""
+        SELECT place_name,
+               COUNT(*) as total_reviews,
+               SUM(CASE WHEN predicted_sentiment = 'positive' THEN 1 ELSE 0 END) as positive_reviews,
+               SUM(CASE WHEN predicted_sentiment = 'negative' THEN 1 ELSE 0 END) as negative_reviews,
+               SUM(CASE WHEN predicted_sentiment = 'neutral' THEN 1 ELSE 0 END) as neutral_reviews
+        FROM restaurant_reviews
+        GROUP BY place_name
+        ORDER BY total_reviews DESC
+    """)
+    sentiment_rows = cur2.fetchall()
+    # For aspects, count occurrences in predicted_aspects JSON array
+    cur2.execute("SELECT place_name, predicted_aspects FROM restaurant_reviews")
+    aspect_map = {}
+    import json
+    for row in cur2.fetchall():
+        name = row['place_name']
+        aspects = []
+        try:
+            aspects = json.loads(row['predicted_aspects']) if row['predicted_aspects'] else []
+        except Exception:
+            pass
+        if name not in aspect_map:
+            aspect_map[name] = {}
+        for asp in aspects:
+            aspect_map[name][asp] = aspect_map[name].get(asp, 0) + 1
+    # Merge sentiment and aspect data
+    for srow in sentiment_rows:
+        name = srow['place_name']
+        analytics_data.append({
+            'place_name': name,
+            'total_reviews': srow['total_reviews'],
+            'positive_reviews': srow['positive_reviews'],
+            'negative_reviews': srow['negative_reviews'],
+            'neutral_reviews': srow['neutral_reviews'],
+            'aspects': aspect_map.get(name, {})
+        })
+    cur2.close()
     cur.close()
     conn.close()
-    return render_template('admin_dashboard.html', user=g.user, pending_admins=pending_admins, all_users=all_users)
+    return render_template('admin_dashboard.html', user=g.user, pending_admins=pending_admins, all_users=all_users, analytics_data=analytics_data)
 # Approve admin route
 @app.route('/approve_admin/<int:user_id>', methods=['POST'])
 @login_required
@@ -532,7 +581,175 @@ def update_predictions():
         import traceback; traceback.print_exc()
         return f"Error updating predictions: {e}", 500
 
+# Admin analytics page route
+@app.route('/admin/analytics')
+@login_required
+def admin_analytics():
+    conn = get_db_connection()
+    cur2 = conn.cursor(dictionary=True)
+    cur2.execute("""
+        SELECT place_name,
+               COUNT(*) as total_reviews,
+               SUM(CASE WHEN predicted_sentiment = 'positive' THEN 1 ELSE 0 END) as positive_reviews,
+               SUM(CASE WHEN predicted_sentiment = 'negative' THEN 1 ELSE 0 END) as negative_reviews,
+               SUM(CASE WHEN predicted_sentiment = 'neutral' THEN 1 ELSE 0 END) as neutral_reviews
+        FROM restaurant_reviews
+        GROUP BY place_name
+        ORDER BY total_reviews DESC
+    """)
+    sentiment_rows = cur2.fetchall()
+    cur2.execute("SELECT place_name, predicted_aspects FROM restaurant_reviews")
+    aspect_map = {}
+    import json
+    for row in cur2.fetchall():
+        name = row['place_name']
+        aspects = []
+        try:
+            aspects = json.loads(row['predicted_aspects']) if row['predicted_aspects'] else []
+        except Exception:
+            pass
+        if name not in aspect_map:
+            aspect_map[name] = {}
+        for asp in aspects:
+            aspect_map[name][asp] = aspect_map[name].get(asp, 0) + 1
+    analytics_data = []
+    for srow in sentiment_rows:
+        name = srow['place_name']
+        analytics_data.append({
+            'place_name': name,
+            'total_reviews': srow['total_reviews'],
+            'positive_reviews': srow['positive_reviews'],
+            'negative_reviews': srow['negative_reviews'],
+            'neutral_reviews': srow['neutral_reviews'],
+            'aspects': aspect_map.get(name, {})
+        })
+    cur2.close()
+    conn.close()
+    return render_template('admin_analytics.html', user=g.user, analytics_data=analytics_data)
 
+@app.route('/user/download_recommendations', methods=['POST'])
+def download_recommendations():
+    # Only allow if user is logged in and has recommendations
+    if not g.user:
+        return redirect(url_for('login'))
+
+    # Get restaurants and query from form
+    restaurants = None
+    query = request.form.get('restaurant_query', '')
+    if 'restaurants' in request.form:
+        try:
+            restaurants = json.loads(request.form['restaurants'])
+        except Exception:
+            restaurants = None
+    if not restaurants:
+        return redirect(url_for('user_dashboard'))
+
+    buffer = BytesIO()
+    p = canvas.Canvas(buffer, pagesize=letter)
+    width, height = letter
+    y = height - 40
+    # Title
+    p.setFont("Helvetica-Bold", 20)
+    p.setFillColor(colors.HexColor("#667eea"))
+    p.drawString(40, y, f"Recommended Restaurants for {g.user.get('username', 'User')}")
+    p.setFillColor(colors.black)
+    y -= 28
+    if query:
+        p.setFont("Helvetica-Oblique", 12)
+        p.drawString(40, y, f"Search Query: {query}")
+        y -= 18
+    p.setFont("Helvetica", 12)
+    for idx, r in enumerate(restaurants, 1):
+        # --- Estimate space needed for this restaurant entry ---
+        entry_height = 0
+        entry_height += 18  # Restaurant name
+        entry_height += 16  # Rating/Address
+        entry_height += 16  # Match Score/Sentiment
+        aspects = r.get('aspect_sentiments', {})
+        if aspects:
+            entry_height += 14  # Key Aspects label
+            entry_height += 12 * len(aspects)  # Each aspect
+        sample_reviews = r.get('sample_reviews', [])
+        if sample_reviews:
+            entry_height += 14  # Sample Reviews label
+            # For each review, estimate wrapped lines
+            for review in sample_reviews[:2]:
+                review_text = review.get('text', '')
+                max_width = width - 120
+                words = review_text.split()
+                lines = []
+                current_line = ''
+                for word in words:
+                    test_line = (current_line + ' ' + word).strip()
+                    if p.stringWidth(test_line, "Helvetica", 12) <= max_width:
+                        current_line = test_line
+                    else:
+                        lines.append(current_line)
+                        current_line = word
+                if current_line:
+                    lines.append(current_line)
+                entry_height += 12 * len(lines)
+        entry_height += 8  # Space before line
+        entry_height += 18  # Space after line
+
+        if y < entry_height + 40:  # 40 is bottom margin
+            p.showPage()
+            y = height - 40
+            p.setFont("Helvetica", 12)
+
+        # Restaurant name bold
+        p.setFont("Helvetica-Bold", 14)
+        p.drawString(50, y, f"{idx}. {r.get('name', 'N/A')}")
+        p.setFont("Helvetica", 12)
+        y -= 18
+        p.drawString(70, y, f"Rating: {r.get('rating', 'N/A')}  |  Address: {r.get('address', 'N/A')}")
+        y -= 16
+        p.drawString(70, y, f"Match Score: {r.get('match_score', 'N/A')}  |  Sentiment: {r.get('overall_sentiment', 'N/A')}")
+        y -= 16
+        if aspects:
+            p.setFont("Helvetica-Bold", 12)
+            p.drawString(70, y, "Key Aspects:")
+            p.setFont("Helvetica", 12)
+            y -= 14
+            for aspect, sentiment in aspects.items():
+                p.drawString(90, y, f"- {aspect}: {sentiment}")
+                y -= 12
+        if sample_reviews:
+            p.setFont("Helvetica-Bold", 12)
+            p.drawString(70, y, "Sample Reviews:")
+            p.setFont("Helvetica", 12)
+            y -= 14
+            for review in sample_reviews[:2]:
+                review_text = review.get('text', '')
+                max_width = width - 120
+                words = review_text.split()
+                lines = []
+                current_line = ''
+                for word in words:
+                    test_line = (current_line + ' ' + word).strip()
+                    if p.stringWidth(test_line, "Helvetica", 12) <= max_width:
+                        current_line = test_line
+                    else:
+                        lines.append(current_line)
+                        current_line = word
+                if current_line:
+                    lines.append(current_line)
+                for i, line in enumerate(lines):
+                    if i == 0:
+                        p.drawString(90, y, f"- {line}")
+                    else:
+                        p.drawString(110, y, line)
+                    y -= 12
+        # Draw a line between restaurants
+        y -= 8
+        p.setStrokeColor(colors.HexColor("#667eea"))
+        p.setLineWidth(0.7)
+        p.line(50, y, width - 50, y)
+        y -= 18
+        p.setStrokeColor(colors.black)
+    p.save()
+    buffer.seek(0)
+    return send_file(buffer, as_attachment=True, download_name="recommendations.pdf", mimetype='application/pdf')
 
 @app.route('/sessionLogout', methods=['POST'])
 @app.route('/logout', methods=['GET'])
