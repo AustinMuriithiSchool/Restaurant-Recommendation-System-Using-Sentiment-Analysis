@@ -1,0 +1,16 @@
+mysql-connector-python
+flask-mysqldb
+Flask
+firebase-admin
+python-dotenv
+itsdangerous
+transformers
+scikit-learn
+datasets
+matplotlib
+reportlab
+torch
+numpy
+requests
+apify-client
+spacy

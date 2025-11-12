@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Restaurant Recommender{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <header class="header">
+        <div class="container header-flex">
+            <h1 class="logo">NourishNet</h1>
+            <nav class="header-nav">
+                {% if user %}
+                    <button onclick="authSendPasswordReset()" class="header-btn">Reset Password</button>
+                    {% if user.role == 'admin' %}
+                        <a href="{{ url_for('admin_analytics') }}" class="header-btn" style="text-decoration:none;">View Analytics</a>
+                    {% endif %}
+                    <button onclick="authLogout()" class="header-btn">Logout</button>
+                {% endif %}
+            </nav>
+        </div>
+    </header>
+    <main class="dashboard-main fade-in">
+        {% block content %}{% endblock %}
+    </main>
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 NourishNet. All rights reserved.</p>
+        </div>
+    </footer>
+</body>
+</html>

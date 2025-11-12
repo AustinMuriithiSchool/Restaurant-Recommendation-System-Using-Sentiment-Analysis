@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+.venv/
+*.pyc
+
+# Environment and secrets
+.env
+.env.*
+firebase_service_account.json
+
+# VSCode
+.vscode/
+
+# Model files
+outputs_distilroberta_base_restaurant

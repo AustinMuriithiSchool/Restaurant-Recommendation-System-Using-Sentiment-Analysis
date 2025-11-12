@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% block title %}Analytics{% endblock %}
+{% block content %}
+<h2 style="margin-bottom:1.5em;">Restaurant Analytics</h2>
+<div style="margin-bottom:2.5em;">
+  <a href="{{ url_for('admin_dashboard') }}" class="header-btn" style="text-decoration:none;">&larr; Back to Dashboard</a>
+</div>
+<div style="margin-bottom:2em;">
+  <label for="restaurantSelect"><b>Select Restaurant:</b></label>
+  <select id="restaurantSelect" class="restaurant-select">
+    <option value="" selected disabled>Choose a restaurant</option>
+    {% for r in analytics_data %}
+      <option value="{{ r.place_name }}">{{ r.place_name }}</option>
+    {% endfor %}
+  </select>
+</div>
+<div id="analyticsSection" style="display:none;">
+  <canvas id="sentimentChart" style="max-width:600px;"></canvas>
+  <h4>Aspect Counts</h4>
+  <table id="aspectTable" class="user-table">
+    <thead><tr><th>Aspect</th><th>Count</th></tr></thead>
+    <tbody></tbody>
+  </table>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const analyticsData = {{ analytics_data|tojson }};
+const select = document.getElementById('restaurantSelect');
+const section = document.getElementById('analyticsSection');
+const aspectTable = document.getElementById('aspectTable').querySelector('tbody');
+let chart = null;
+select.addEventListener('change', function() {
+  const name = this.value;
+  const data = analyticsData.find(r => r.place_name === name);
+  if (!data) return;
+  section.style.display = '';
+  // Update Chart
+  const chartData = {
+    labels: ['Positive', 'Negative', 'Neutral'],
+    datasets: [{
+      label: name + ' Sentiment',
+      data: [data.positive_reviews, data.negative_reviews, data.neutral_reviews],
+      backgroundColor: [
+        'rgba(34,197,94,0.7)',
+        'rgba(239,68,68,0.7)',
+        'rgba(251,191,36,0.7)'
+      ]
+    }]
+  };
+  if (chart) chart.destroy();
+  chart = new Chart(document.getElementById('sentimentChart').getContext('2d'), {
+    type: 'bar',
+    data: chartData,
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        title: { display: true, text: name + ' Sentiment Distribution' }
+      },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+  // Update Aspect Table
+  aspectTable.innerHTML = '';
+  const aspects = data.aspects || {};
+  const aspectKeys = Object.keys(aspects);
+  if (aspectKeys.length === 0) {
+    aspectTable.innerHTML = '<tr><td colspan="2">No aspect data</td></tr>';
+  } else {
+    aspectKeys.forEach(a => {
+      const row = document.createElement('tr');
+      row.innerHTML = `<td>${a}</td><td>${aspects[a]}</td>`;
+      aspectTable.appendChild(row);
+    });
+  }
+});
+</script>
+{% endblock %}

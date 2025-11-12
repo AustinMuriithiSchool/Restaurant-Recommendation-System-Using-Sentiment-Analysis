@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block content %}
+<h2>Welcome, {{ user.username if user and user.username else 'Admin' }}!</h2>
+
+<h3 class="section-heading">Pending Admin Approvals</h3>
+{% if pending_admins and pending_admins|length > 0 %}
+	<table style="margin-top:1em;">
+		<tr><th>Username</th><th>Email</th><th>Action</th></tr>
+		{% for admin in pending_admins %}
+			<tr>
+				<td>{{ admin[1] }}</td>
+				<td>{{ admin[2] }}</td>
+				<td>
+					<form method="post" action="{{ url_for('approve_admin', user_id=admin[0]) }}">
+						<button type="submit">Approve</button>
+					</form>
+				</td>
+			</tr>
+		{% endfor %}
+	</table>
+{% else %}
+	<p>No pending admin approvals.</p>
+{% endif %}
+
+<h3 class="section-heading">All Registered Users</h3>
+<table class="user-table">
+	<tr><th>Username</th><th>Email</th><th>Role</th></tr>
+	{% for u in all_users %}
+		<tr>
+			<td>{{ u[0] }}</td>
+			<td>{{ u[1] }}</td>
+			<td>{{ u[2] }}</td>
+		</tr>
+	{% endfor %}
+</table>
+
+<h3 class="section-heading">Upload Reviews (JSON)</h3>
+{% if upload_message %}
+  <div class="upload-message">{{ upload_message }}</div>
+{% endif %}
+<form action="{{ url_for('upload_reviews') }}" method="post" enctype="multipart/form-data" class="upload-form">
+	<label for="reviews_json">Select JSON file to upload:</label>
+	<input type="file" id="reviews_json" name="reviews_json" accept="application/json" required title="Choose a JSON file with reviews">
+	<button type="submit">Upload Reviews</button>
+</form>
+
+<h3 class="section-heading">Update Review Predictions</h3>
+{% if prediction_message %}
+  <div class="upload-message">{{ prediction_message }}</div>
+{% endif %}
+<form action="{{ url_for('update_predictions') }}" method="post" class="upload-form">
+  <button type="submit">Update Review Predictions</button>
+</form>
+<style>
+.upload-form {
+  margin-top: 1em;
+}
+.upload-form label {
+  margin-right: 0.5em;
+  border-collapse: collapse;
+  margin-top: 1em;
+}
+.user-table th, .user-table td {
+  padding: 0.75em 1em;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+}
+.user-table th {
+  background: #f7fafc;
+  color: #2d3748;
+  font-weight: 600;
+}
+.user-table tr:last-child td {
+  border-bottom: none;
+}
+.section-heading {
+  margin-top: 2em;
+  margin-bottom: 0.5em;
+}
+.upload-message {
+	margin-top: 1em;
+	padding: 0.75em 1em;
+	background: #e6ffed;
+	color: #22543d;
+	border: 1px solid #b7f5d8;
+	border-radius: 4px;
+	font-weight: 500;
+}
+.upload-form {
+	margin-top: 1em;
+}
+.upload-form label {
+	margin-right: 0.5em;
+}
+</style>
+<script>
+var USER_EMAIL_FROM_TEMPLATE = {{ user.email|tojson }};
+</script>
+<script type="module" src="/static/js/auth.js"></script>
+{% endblock %}
