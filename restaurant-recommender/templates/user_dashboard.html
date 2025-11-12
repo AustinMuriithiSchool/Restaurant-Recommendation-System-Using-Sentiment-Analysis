@@ -25,6 +25,14 @@
 	</div>
 
 	<!-- Results Section -->
+	<div style="margin-bottom:0.5em; margin-top:-2.5em;">
+		{% if restaurants %}
+				<form action="{{ url_for('download_recommendations') }}" method="post" style="margin-top:0; margin-bottom:0;">
+					<input type="hidden" name="restaurants" value='{{ restaurants|tojson|safe }}'>
+					<button type="submit" class="header-btn">Download PDF</button>
+				</form>
+		{% endif %}
+	</div>
 	<div id="restaurant-results" class="dashboard-results">
 		{% if restaurants %}
 			<h3>Results for: "{{ request.form.restaurant_query if request.form.restaurant_query else '' }}"</h3>

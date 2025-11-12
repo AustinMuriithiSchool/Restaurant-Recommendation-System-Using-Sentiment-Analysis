@@ -3,13 +3,14 @@ import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import numpy as np
 import json
-import os
+from pathlib import Path
+
+# Use absolute POSIX paths for model directories
 
 # Use absolute paths for model directories
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-sentiment_dir = os.path.join(BASE_DIR, "outputs_distilroberta_base_restaurant", "sentiment").replace("\\", "/")
-aspect_dir = os.path.join(BASE_DIR, "outputs_distilroberta_base_restaurant", "aspects").replace("\\", "/")
+BASE_DIR = Path(__file__).parent.resolve()
+sentiment_dir = (BASE_DIR / "outputs_distilroberta_base_restaurant" / "sentiment").as_posix()
+aspect_dir = (BASE_DIR / "outputs_distilroberta_base_restaurant" / "aspects").as_posix()
 
 # Load sentiment model and tokenizer
 tokenizer = AutoTokenizer.from_pretrained(sentiment_dir, local_files_only=True)
@@ -18,8 +19,9 @@ sentiment_model = AutoModelForSequenceClassification.from_pretrained(sentiment_d
 # Load aspect model
 aspect_model = AutoModelForSequenceClassification.from_pretrained(aspect_dir, local_files_only=True)
 
+
 # Load aspect and sentiment labels
-label_info_path = os.path.join(BASE_DIR, "outputs_distilroberta_base_restaurant", "label_info.json")
+label_info_path = (BASE_DIR / "outputs_distilroberta_base_restaurant" / "label_info.json").as_posix()
 with open(label_info_path, 'r') as f:
     label_info = json.load(f)
 sentiment_labels = label_info['sentiment_labels']
@@ -33,8 +35,6 @@ def predict_sentiment(text):
         logits = outputs.logits
         pred = torch.argmax(logits, dim=-1).item()
     return sentiment_labels[pred]
-
-# Prediction function for aspects
 def predict_aspects(text):
     inputs = tokenizer(text, return_tensors='pt', truncation=True, max_length=256)
     with torch.no_grad():
