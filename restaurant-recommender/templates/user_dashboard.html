@@ -29,6 +29,7 @@
 		{% if restaurants %}
 				<form action="{{ url_for('download_recommendations') }}" method="post" style="margin-top:0; margin-bottom:0;">
 					<input type="hidden" name="restaurants" value='{{ restaurants|tojson|safe }}'>
+					<input type="hidden" name="restaurant_query" value="{{ request.form.restaurant_query if request.form.restaurant_query else '' }}">
 					<button type="submit" class="header-btn">Download PDF</button>
 				</form>
 		{% endif %}
