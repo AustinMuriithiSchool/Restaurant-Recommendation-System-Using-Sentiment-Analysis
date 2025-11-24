@@ -722,6 +722,34 @@ def download_recommendations():
             for review in sample_reviews[:2]:
                 review_text = review.get('text', '')
                 max_width = width - 120
+                aspects = review.get('aspect', '')
+                # Prepare aspect words for matching
+                if isinstance(aspects, list):
+                    aspect_words = [a.lower() for a in aspects]
+                else:
+                    aspect_words = [a.strip().lower() for a in str(aspects).split(',') if a.strip()]
+                # Prepare synonyms for aspects
+                aspect_synonyms = {}
+                try:
+                    from mlmodel.train_distilroberta import ASPECT_SYNONYMS
+                    aspect_synonyms = ASPECT_SYNONYMS
+                except Exception:
+                    aspect_synonyms = {}
+                all_synonyms = set()
+                for aspect in aspect_words:
+                    syns = aspect_synonyms.get(aspect, [])
+                    all_synonyms.update([s.lower() for s in syns])
+                # Prepare query keywords, filter stopwords
+                stopwords = set([
+                    'the', 'and', 'a', 'an', 'of', 'for', 'to', 'in', 'on', 'at', 'with', 'is', 'are', 'was', 'were', 'be', 'by', 'as', 'it', 'this', 'that', 'from', 'or', 'but', 'so', 'if', 'then', 'than', 'which', 'who', 'what', 'where', 'when', 'how', 'has', 'have', 'had', 'do', 'does', 'did', 'can', 'could', 'should', 'would', 'will', 'just', 'about', 'into', 'out', 'up', 'down', 'over', 'under', 'again', 'more', 'most', 'some', 'such', 'no', 'not', 'only', 'own', 'same', 'too', 'very', 's', 't', 'd', 'll', 'm', 'o', 're', 've', 'y'
+                ])
+                query_words = [w.lower() for w in query.split() if w.lower() not in stopwords]
+                positive_words = set([
+                    'good','great','excellent','amazing','delicious','tasty','yummy','wonderful','awesome','perfect','outstanding','fantastic','superb','love','loved','enjoy','enjoyed','pleasant','satisfying','impressive','favorite','best','nice','fresh','friendly','welcoming','happy','recommend','recommended','memorable','top','positive','beautiful','clean','neat','affordable','reasonable','quick','fast','prompt','cozy','peaceful','spacious','helpful','attentive','professional','polite','courteous','responsive','filling','hearty','generous','adequate','enough','well','smooth','fun','funny','entertaining','safe','secure','convenient','accessible','organized','tidy','spotless','sanitary','hygienic','special','unique','creative','modern','stylish','romantic','intimate','lively','calm','bright','cheerful','efficient','value','worth','deal','bargain','discount','offer','special','happy hour','live music','family','kid','play','outdoor','wifi','power','charging','socket','plug','rest area','wash area','handwash','kids area','play area','outdoor seating','non-smoking','first aid','recommendation','will return','come back','regular','expectation','exceeded','met expectations','feedback','review','opinion'
+                ])
+                negative_words = set([
+                    'bad','poor','terrible','awful','disappointing','unpleasant','unhappy','unfriendly','rude','impolite','unhelpful','slow','late','dirty','filthy','messy','crowded','cramped','noisy','loud','expensive','pricey','overpriced','underwhelming','bland','stale','burnt','raw','greasy','oily','dry','overcooked','undercooked','cold','soggy','small','tiny','insufficient','not enough','unorganized','confusing','difficult','problem','issue','complaint','wait','waiting','queue','delay','lag','rush','missing','out of stock','unavailable','broken','unsafe','dangerous','harassment','robbery','lost','forgot','forgotten','wrong','incorrect','mistake','error','negative','dislike','hate','disliked','disappoint','disappointed','disappointing','not recommend','never return','never come back','waste','money','uncomfortable','unpleasant','smell','odor','garbage','trash','waste','leak','spilled','poorly packed','no wifi','no power','no charging','no socket','no plug','no rest area','no wash area','no handwash','no kids area','no play area','no outdoor seating','smoking','no first aid','did not meet','not met','not exceeded','not satisfied','not happy','not impressed','not memorable','not favorite','not best','not top','not positive','not beautiful','not clean','not neat','not affordable','not reasonable','not quick','not fast','not prompt','not cozy','not peaceful','not spacious','not helpful','not attentive','not professional','not polite','not courteous','not responsive','not filling','not hearty','not generous','not adequate','not enough','not well','not smooth','not fun','not funny','not entertaining','not safe','not secure','not convenient','not accessible','not organized','not tidy','not spotless','not sanitary','not hygienic','not special','not unique','not creative','not modern','not stylish','not romantic','not intimate','not lively','not calm','not bright','not cheerful','not efficient','not value','not worth','not deal','not bargain','not discount','not offer','not special','not happy hour','not live music','not family','not kid','not play','not outdoor','not wifi','not power','not charging','not socket','not plug','not rest area','not wash area','not handwash','not kids area','not play area','not outdoor seating','not non-smoking','not first aid','not recommendation','not will return','not come back','not regular','not expectation','not exceeded','not met expectations','not feedback','not review','not opinion'
+                ])
                 words = review_text.split()
                 lines = []
                 current_line = ''
@@ -735,11 +763,54 @@ def download_recommendations():
                 if current_line:
                     lines.append(current_line)
                 for i, line in enumerate(lines):
-                    if i == 0:
-                        p.drawString(90, y, f"- {line}")
-                    else:
-                        p.drawString(110, y, line)
+                    x_pos = 90 if i == 0 else 110
+                    curr_x = x_pos
+                    for w in line.split(' '):
+                        w_clean = w.lower().strip('.,!?')
+                        is_bold = False
+                        if (
+                            (w_clean in aspect_words or w_clean in all_synonyms or w_clean in query_words or w_clean in positive_words or w_clean in negative_words)
+                            and len(w) == len(w_clean)
+                        ):
+                            is_bold = True
+                        if is_bold:
+                            p.setFont("Helvetica-Bold", 12)
+                        else:
+                            p.setFont("Helvetica", 12)
+                        p.drawString(curr_x, y, w)
+                        curr_x += p.stringWidth(w + ' ', "Helvetica", 12)
                     y -= 12
+                # Bold sentiment and aspects in metadata line
+                sentiment = review.get('sentiment', '')
+                aspects = review.get('aspect', '')
+                meta_x = 110
+                meta_line = "Sentiment: "
+                p.setFont("Helvetica", 12)
+                p.drawString(meta_x, y, meta_line)
+                meta_x += p.stringWidth(meta_line, "Helvetica", 12)
+                if sentiment:
+                    p.setFont("Helvetica-Bold", 12)
+                    p.drawString(meta_x, y, sentiment)
+                    meta_x += p.stringWidth(sentiment, "Helvetica-Bold", 12)
+                p.setFont("Helvetica", 12)
+                aspects_label = " | Aspects: "
+                p.drawString(meta_x, y, aspects_label)
+                meta_x += p.stringWidth(aspects_label, "Helvetica", 12)
+                if aspects:
+                    # If aspects is a list, join; if string, split by comma
+                    if isinstance(aspects, list):
+                        aspect_list = aspects
+                    else:
+                        aspect_list = [a.strip() for a in str(aspects).split(",") if a.strip()]
+                    for idx, aspect in enumerate(aspect_list):
+                        p.setFont("Helvetica-Bold", 12)
+                        p.drawString(meta_x, y, aspect)
+                        meta_x += p.stringWidth(aspect, "Helvetica-Bold", 12)
+                        if idx < len(aspect_list) - 1:
+                            p.setFont("Helvetica", 12)
+                            p.drawString(meta_x, y, ", ")
+                            meta_x += p.stringWidth(", ", "Helvetica", 12)
+                y -= 12
         # Draw a line between restaurants
         y -= 8
         p.setStrokeColor(colors.HexColor("#667eea"))

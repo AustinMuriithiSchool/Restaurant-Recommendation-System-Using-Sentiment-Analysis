@@ -18,7 +18,7 @@ ASPECT_SYNONYMS: Dict[str, List[str]] = {
         "food","meal","meat","dish","cuisine","taste","flavor","flavour","aroma","smell","presentation","plating",
         "fresh","stale","delicious","tasty","yummy","bland","spicy","salty","sweet","sour","bitter",
         "juicy","tender","seafood","crispy","crunchy","dry","oily","greasy","overcooked","undercooked","burnt","raw",
-        "ingredients","recipe","specialty","pilau","nyama","nyama choma","ugali","chapati","fish","chicken","beef","pizza","burger",
+        "ingredients","recipe","specialty","pilau","nyama","nyama choma","ugali","chapati","fish","chicken","beef","pizza","burgers",
         "fries","chips","bbq","grilled","fried","boiled","roast","soup","dessert","cake","pastry","sandwich","biryani"
     ],
 
