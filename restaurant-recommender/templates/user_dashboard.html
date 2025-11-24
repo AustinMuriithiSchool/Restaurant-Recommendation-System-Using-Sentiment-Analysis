@@ -66,8 +66,52 @@
 							<ul class="review-list">
 							{% for review in r.sample_reviews %}
 								<li>
-									<em>"{{ review.text }}"</em><br>
-									<small>Sentiment: {{ review.sentiment }} | Aspects: {{ review.aspect }}</small>
+									<em>
+									"
+									{% set aspects = review.aspect if review.aspect is iterable and review.aspect is not string else review.aspect.split(',') %}
+									{% set aspect_words = aspects | map('lower') | list %}
+									{% set stopwords = [
+										'the', 'and', 'a', 'an', 'of', 'for', 'to', 'in', 'on', 'at', 'with', 'is', 'are', 'was', 'were', 'be', 'by', 'as', 'it', 'this', 'that', 'from', 'or', 'but', 'so', 'if', 'then', 'than', 'which', 'who', 'what', 'where', 'when', 'how', 'has', 'have', 'had', 'do', 'does', 'did', 'can', 'could', 'should', 'would', 'will', 'just', 'about', 'into', 'out', 'up', 'down', 'over', 'under', 'again', 'more', 'most', 'some', 'such', 'no', 'not', 'only', 'own', 'same', 'too', 'very', 's', 't', 'd', 'll', 'm', 'o', 're', 've', 'y'
+									] %}
+									{% set query_words = (request.form.restaurant_query if request.form.restaurant_query else '').split(' ') %}
+									{% set query_words = query_words | map('lower') | reject('in', stopwords) | list %}
+									{% set all_synonyms = [] %}
+									{% for aspect in aspects %}
+										{% set aspect_syns = [] %}
+										{% if aspect_synonyms and aspect_synonyms[aspect.strip().lower()] %}
+											{% set aspect_syns = aspect_synonyms[aspect.strip().lower()] %}
+										{% endif %}
+										{% set all_synonyms = all_synonyms + (aspect_syns | map('lower') | list) %}
+									{% endfor %}
+									{% set positive_words = [
+										'good','great','excellent','amazing','delicious','tasty','yummy','wonderful','awesome','perfect','outstanding','fantastic','superb','love','loved','enjoy','enjoyed','pleasant','satisfying','impressive','favorite','best','nice','fresh','friendly','welcoming','happy','recommend','recommended','memorable','top','positive','beautiful','clean','neat','affordable','reasonable','quick','fast','prompt','cozy','peaceful','spacious','helpful','attentive','professional','polite','courteous','responsive','filling','hearty','generous','adequate','enough','well','smooth','fun','funny','entertaining','safe','secure','convenient','accessible','organized','tidy','spotless','sanitary','hygienic','special','unique','creative','modern','stylish','romantic','intimate','lively','calm','bright','cheerful','efficient','value','worth','deal','bargain','discount','offer','special','happy hour','live music','family','kid','play','outdoor','wifi','power','charging','socket','plug','rest area','wash area','handwash','kids area','play area','outdoor seating','non-smoking','first aid','recommendation','will return','come back','regular','expectation','exceeded','met expectations','feedback','review','opinion'
+									] %}
+									{% set negative_words = [
+										'bad','poor','terrible','awful','disappointing','unpleasant','unhappy','unfriendly','rude','impolite','unhelpful','slow','late','dirty','filthy','messy','crowded','cramped','noisy','loud','expensive','pricey','overpriced','underwhelming','bland','stale','burnt','raw','greasy','oily','dry','overcooked','undercooked','cold','soggy','small','tiny','insufficient','not enough','unorganized','confusing','difficult','problem','issue','complaint','wait','waiting','queue','delay','lag','rush','missing','out of stock','unavailable','broken','unsafe','dangerous','harassment','robbery','lost','forgot','forgotten','wrong','incorrect','mistake','error','negative','dislike','hate','disliked','disappoint','disappointed','disappointing','not recommend','never return','never come back','waste','money','uncomfortable','unpleasant','smell','odor','garbage','trash','waste','leak','spilled','poorly packed','no wifi','no power','no charging','no socket','no plug','no rest area','no wash area','no handwash','no kids area','no play area','no outdoor seating','smoking','no first aid','did not meet','not met','not exceeded','not satisfied','not happy','not impressed','not memorable','not favorite','not best','not top','not positive','not beautiful','not clean','not neat','not affordable','not reasonable','not quick','not fast','not prompt','not cozy','not peaceful','not spacious','not helpful','not attentive','not professional','not polite','not courteous','not responsive','not filling','not hearty','not generous','not adequate','not enough','not well','not smooth','not fun','not funny','not entertaining','not safe','not secure','not convenient','not accessible','not organized','not tidy','not spotless','not sanitary','not hygienic','not special','not unique','not creative','not modern','not stylish','not romantic','not intimate','not lively','not calm','not bright','not cheerful','not efficient','not value','not worth','not deal','not bargain','not discount','not offer','not special','not happy hour','not live music','not family','not kid','not play','not outdoor','not wifi','not power','not charging','not socket','not plug','not rest area','not wash area','not handwash','not kids area','not play area','not outdoor seating','not non-smoking','not first aid','not recommendation','not will return','not come back','not regular','not expectation','not exceeded','not met expectations','not feedback','not review','not opinion'
+									] %}
+									{% for word in review.text.split(' ') %}
+										{% set w = word.lower().strip('.,!?') %}
+										{% set is_bold = false %}
+										{% if w in aspect_words or w in query_words or w in all_synonyms %}
+											{% set is_bold = true %}
+										{% endif %}
+										{# Only bold if the word is not a substring of another word #}
+										{% if is_bold and word|length == w|length %}
+											<strong>{{ word }}</strong>
+										{% else %}
+											{{ word }}
+										{% endif %}
+										{% if not loop.last %} {% endif %}
+									{% endfor %}
+									"
+									</em><br>
+									<small>
+										Sentiment: <strong>{{ review.sentiment }}</strong> |
+										Aspects:
+										{% for aspect in aspects %}
+											<strong>{{ aspect.strip() }}</strong>{% if not loop.last %}, {% endif %}
+										{% endfor %}
+									</small>
 								</li>
 							{% endfor %}
 							</ul>
