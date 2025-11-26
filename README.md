@@ -46,7 +46,9 @@ APIFY_API_TOKEN=your_apify_api_token
 ```
 
 ### 4. Database Setup
+
 Create a MySQL database named `nourishnet` and the required tables. Example table for reviews:
+
 ```sql
 CREATE TABLE restaurant_reviews (
 	id INT AUTO_INCREMENT PRIMARY KEY,
@@ -60,6 +62,21 @@ CREATE TABLE restaurant_reviews (
 	location VARCHAR(100),
 	predicted_sentiment VARCHAR(50),
 	predicted_aspects TEXT
+);
+```
+
+Example table for users:
+
+```sql
+CREATE TABLE users (
+	id INT AUTO_INCREMENT PRIMARY KEY,
+	firebase_uid VARCHAR(128) NOT NULL,
+	username VARCHAR(100) NOT NULL,
+	email VARCHAR(255) NOT NULL,
+	role ENUM('admin', 'user') NOT NULL,
+	status VARCHAR(20) DEFAULT 'active',
+	INDEX (firebase_uid),
+	INDEX (email)
 );
 ```
 
@@ -82,8 +99,6 @@ The app will be available at `http://localhost:5000`.
 - Search for restaurants and view recommendations.
 - Admins can view analytics and export reports.
 
-## Contributing
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 
 ## License
 This project is for educational purposes.
