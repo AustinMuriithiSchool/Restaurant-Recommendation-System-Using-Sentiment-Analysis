@@ -47,38 +47,14 @@ APIFY_API_TOKEN=your_apify_api_token
 
 ### 4. Database Setup
 
-Create a MySQL database named `nourishnet` and the required tables. Example table for reviews:
+Create a MySQL database named `nourishnet` and import the provided SQL file to set up all required tables:
 
-```sql
-CREATE TABLE restaurant_reviews (
-	id INT AUTO_INCREMENT PRIMARY KEY,
-	author_name VARCHAR(255),
-	place_address VARCHAR(255),
-	place_name VARCHAR(255),
-	review_url VARCHAR(255) UNIQUE,
-	review_title VARCHAR(255),
-	review_text TEXT,
-	review_rating FLOAT,
-	location VARCHAR(100),
-	predicted_sentiment VARCHAR(50),
-	predicted_aspects TEXT
-);
+```powershell
+# In MySQL or MariaDB, run:
+mysql -u root -p nourishnet < restaurant-recommender/nourishnet.sql
 ```
 
-Example table for users:
-
-```sql
-CREATE TABLE users (
-	id INT AUTO_INCREMENT PRIMARY KEY,
-	firebase_uid VARCHAR(128) NOT NULL,
-	username VARCHAR(100) NOT NULL,
-	email VARCHAR(255) NOT NULL,
-	role ENUM('admin', 'user') NOT NULL,
-	status VARCHAR(20) DEFAULT 'active',
-	INDEX (firebase_uid),
-	INDEX (email)
-);
-```
+This will automatically create all necessary tables and schema for the project.
 
 ### 5. Firebase Setup
 - Create a Firebase project and download the service account JSON.
